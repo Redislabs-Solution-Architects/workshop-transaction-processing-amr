@@ -10,6 +10,7 @@ from processor.modules import (
     store_transaction,
     spending_categories,
     spending_over_time,
+    vector_search,
 )
 
 

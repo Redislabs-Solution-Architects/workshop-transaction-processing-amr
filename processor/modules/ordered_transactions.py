@@ -14,7 +14,8 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
     """
     tx_id = tx_data.get('transactionId')
 
-    # TODO: Use LPUSH to add transaction ID to the beginning of the list "transactions:ordered".
+    # TODO: Replace the line below with:
+    # Add transaction ID to the beginning of the list "transactions:ordered".
     # This keeps newest transactions at the front (index 0).
     pass
 
@@ -25,7 +26,8 @@ def get_recent_transactions(redis_client, limit: int = 10) -> List[str]:
     Returns list of transaction IDs, newest first.
 
     """
-    # TODO: Get transaction IDs from "transactions:ordered"
-    # Use: LRANGE to get a range of items from the list.
+    # TODO: Replace the line below with:
+    # Get transaction IDs from "transactions:ordered"
+    # Get a range of items from the list.
     # Start at 0 (newest), end at limit-1.
     return []

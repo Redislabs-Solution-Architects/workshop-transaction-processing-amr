@@ -21,6 +21,7 @@ from modules import ordered_transactions
 from modules import store_transaction
 from modules import spending_categories
 from modules import spending_over_time
+from modules import vector_search
 
 logger = setup_logger("consumer")
 
@@ -42,6 +43,9 @@ def dispatch_transaction(redis_client, tx_data: Dict[str, str]) -> None:
 
     # Module 4: Add to time-series
     spending_over_time.process_transaction(redis_client, tx_data)
+
+    # Module 5: Generate embedding for vector search
+    vector_search.process_transaction(redis_client, tx_data)
 
 
 def ensure_consumer_group(redis_client, stream_key: str, group_name: str) -> None:
@@ -68,15 +72,22 @@ def main() -> None:
     redis = get_redis()
     ensure_consumer_group(redis, STREAM_KEY, GROUP_NAME)
 
+    # Create vector search index if configured
+    try:
+        vector_search.create_index(redis)
+    except Exception as e:
+        logger.warning(f"Vector search index not ready: {e}")
+
     logger.info("=" * 70)
     logger.info("Transaction Processor Starting")
     logger.info("=" * 70)
     logger.info(f"Stream: {STREAM_KEY}")
-    logger.info(f"Dispatching to 4 modules:")
+    logger.info(f"Dispatching to 5 modules:")
     logger.info("  1. ordered_transactions  - List")
     logger.info("  2. store_transaction     - JSON")
     logger.info("  3. spending_categories   - Sorted Sets")
     logger.info("  4. spending_over_time    - TimeSeries")
+    logger.info("  5. vector_search         - Vector Search")
     logger.info("=" * 70)
 
     processed_count = 0

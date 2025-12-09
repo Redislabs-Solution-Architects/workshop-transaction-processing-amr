@@ -43,8 +43,18 @@ def get_status(redis=Depends(get_redis_client)):
     except:
         pass
 
+    # Check Search tab (needs Vector index)
+    search_unlocked = False
+    try:
+        # Check if vector index exists by trying to get info
+        redis.ft("idx:transactions:vector").info()
+        search_unlocked = True
+    except:
+        pass
+
     return {
         "transactions_unlocked": transactions_unlocked,
         "categories_unlocked": categories_unlocked,
         "timeseries_unlocked": timeseries_unlocked,
+        "search_unlocked": search_unlocked,
     }

@@ -8,10 +8,12 @@ from . import ordered_transactions
 from . import store_transaction
 from . import spending_categories
 from . import spending_over_time
+from . import vector_search
 
 __all__ = [
     'ordered_transactions',
     'store_transaction',
     'spending_categories',
     'spending_over_time',
+    'vector_search',
 ]

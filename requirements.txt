@@ -5,3 +5,7 @@ redis[hiredis]>=5.0.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 orjson>=3.9.0
+
+# Vector search with RedisVL
+redisvl>=0.3.0
+sentence-transformers>=2.2.0

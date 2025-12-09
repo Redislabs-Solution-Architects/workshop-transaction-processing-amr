@@ -13,7 +13,7 @@ from pathlib import Path
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api.routers import transactions, categories, timeseries, status, stream
+from api.routers import transactions, categories, timeseries, status, stream, search
 
 app = FastAPI(title="Banking Workshop API", default_response_class=ORJSONResponse)
 
@@ -32,6 +32,7 @@ app.include_router(transactions.router)
 app.include_router(categories.router)
 app.include_router(timeseries.router)
 app.include_router(stream.router)
+app.include_router(search.router)
 
 
 @app.get("/health")

@@ -25,7 +25,8 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
         'cardLast4': tx_data.get('cardLast4'),
     }
 
-    # TODO: Store transaction using JSON.SET
+    # TODO: Replace the line below with:
+    # Add JSON to Redis
     # Key format: f"transaction:{tx_id}"
     # Path: "$" (root)
     pass
@@ -35,8 +36,8 @@ def get_transaction(redis_client, tx_id: str) -> Optional[Dict]:
     """
     Retrieve a single transaction by ID.
     """
-    # TODO: Replace "result = None" with solution to get transaction using JSON.GET
-    # Use: result = redis_client.json().get(f"transaction:{tx_id}", "$")
+    # TODO: Replace the line below with:
+    # Retrieve JSON from Redis
     # Key format: f"transaction:{tx_id}"
     # Path: "$" (root)
     result = None
@@ -53,7 +54,8 @@ def get_transactions_by_ids(redis_client, tx_ids: List[str]) -> List[Dict]:
 
     keys = [f"transaction:{tx_id}" for tx_id in tx_ids]
     
-    # TODO: Update results = [] to use  JSON.MGET to fetch all transactions in one call and set to results
+    # TODO: Replace the line below with:
+    # Fetch JSON for the keys defined above, in one call
     # Path: "$" (root)
     results = []
 

@@ -15,7 +15,8 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
     amount = float(tx_data.get('amount', 0))
     timestamp = int(tx_data.get('timestamp', 0))
 
-    # TODO: Add data point to "spending:timeseries"
+    # TODO: Replace the line below with:
+    # Add amount and timestamp timseries with key "spending:timeseries"
     pass
 
 
@@ -23,7 +24,8 @@ def get_spending_in_range(redis_client, start_time: int, end_time: int) -> List[
     """
     Get spending data points in time range.
     """
-    # TODO: Query "spending:timeseries" between start_time and end_time
+    # TODO: Replace the line below with:
+    # Query "spending:timeseries" between start_time and end_time
     return []
 
 

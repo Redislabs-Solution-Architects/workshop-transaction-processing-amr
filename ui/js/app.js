@@ -50,7 +50,8 @@ const AppState = {
     status: {
         transactions_unlocked: false,
         categories_unlocked: false,
-        timeseries_unlocked: false
+        timeseries_unlocked: false,
+        search_unlocked: false
     },
     selectedTransaction: null
 };
@@ -78,7 +79,8 @@ class App {
             const changed =
                 status.transactions_unlocked !== AppState.status.transactions_unlocked ||
                 status.categories_unlocked !== AppState.status.categories_unlocked ||
-                status.timeseries_unlocked !== AppState.status.timeseries_unlocked;
+                status.timeseries_unlocked !== AppState.status.timeseries_unlocked ||
+                status.search_unlocked !== AppState.status.search_unlocked;
 
             AppState.status = status;
 
@@ -161,6 +163,8 @@ class App {
             attachCategoriesListeners();
         } else if (AppState.activeTab === 'timeseries' && AppState.status.timeseries_unlocked) {
             attachTimeseriesListeners();
+        } else if (AppState.activeTab === 'search' && AppState.status.search_unlocked) {
+            attachSearchListeners();
         }
     }
 }

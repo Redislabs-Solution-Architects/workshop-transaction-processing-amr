@@ -32,6 +32,7 @@ function renderBankingApp() {
                         ${renderTab('transactions', 'Transactions', status.transactions_unlocked)}
                         ${renderTab('categories', 'Spending Categories', status.categories_unlocked)}
                         ${renderTab('timeseries', 'Track Spending Over Time', status.timeseries_unlocked)}
+                        ${renderTab('search', 'Find Transactions', status.search_unlocked)}
                     </div>
                 </div>
             </div>
@@ -86,6 +87,12 @@ function renderTabContent() {
         return status.timeseries_unlocked
             ? renderTimeseriesTab()
             : renderLockedMessage('Complete <code>spending_over_time.py</code>');
+    }
+
+    if (activeTab === 'search') {
+        return status.search_unlocked
+            ? renderSearchTab()
+            : renderLockedMessage('Complete <code>vector_search.py</code>');
     }
 }
 
