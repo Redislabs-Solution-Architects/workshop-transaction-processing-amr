@@ -1,6 +1,6 @@
 # Redis Banking Workshop
 
-Build a real-time transaction processing system using Redis Stack.
+Modernize your application with Redis Stack. Build fast, real-time systems and make your data AI-ready with vector search.
 
 ## What You'll Learn
 
@@ -9,6 +9,7 @@ Build a real-time transaction processing system using Redis Stack.
 - **Redis JSON** - Document storage
 - **Sorted Sets** - Ranked aggregations
 - **TimeSeries** - Time-based analytics
+- **Vector Search** - Semantic search with embeddings (RedisVL)
 
 ## Get Started
 
