@@ -1,0 +1,9 @@
+# Redis client
+redis[hiredis]>=5.0.0
+
+# Environment management
+python-dotenv>=1.0.0
+
+# API (for UI backend)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
