@@ -1,17 +1,17 @@
 > **Tip:** For best viewing in your IDE, use markdown preview (VS Code: `Cmd+Shift+V` on Mac, `Ctrl+Shift+V` on Windows/Linux)
 
-# Redis Banking Workshop
+# Redis Transaction Processing Workshop
 
-Modernize your application with Redis Stack. Build fast, real-time systems and make your data AI-ready with vector search.
+Build a real-time transaction backend with Redis. Store data query-ready and make it AI-searchable with vector embeddings.
 
 ## What You'll Learn
 
-- **Redis Streams** - Real-time message processing
-- **Redis Lists** - Ordered data storage
-- **Redis JSON** - Document storage
-- **Sorted Sets** - Ranked aggregations
-- **TimeSeries** - Time-based analytics
-- **Vector Search** - Semantic search with embeddings (RedisVL)
+- **Redis Streams** — Ingest transactions in real-time
+- **Redis Lists** — Retrieve recent transactions in order
+- **Redis JSON** — Store and query transaction details
+- **Sorted Sets** — Rank spending by category and merchant
+- **TimeSeries** — Track spending trends over time
+- **Vector Search** — Search transactions by meaning, not keywords
 
 ## Get Started
 

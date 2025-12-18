@@ -11,7 +11,7 @@ function renderBankingApp() {
             <header class="border-b border-gray-200">
                 <div class="max-w-7xl mx-auto px-6 py-4">
                     <div class="flex items-center justify-between">
-                        <h1 class="text-xl font-light">Banking Workshop</h1>
+                        <h1 class="text-xl font-light">Transaction Workshop</h1>
                         <button
                             id="redis-insight-btn"
                             class="px-4 py-2 text-sm text-white rounded-lg transition-colors"

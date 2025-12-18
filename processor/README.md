@@ -2,7 +2,7 @@
 
 # Processor Modules
 
-You're building the backend for a banking app. Transactions stream in every few seconds.
+You're building a real-time transaction processor. Transactions stream in every few seconds.
 
 Store them using Redis data structures so each query is instant — no filtering, no sorting at query time.
 
