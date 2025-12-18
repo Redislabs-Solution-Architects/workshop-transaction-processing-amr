@@ -2,7 +2,7 @@
 
 # Redis Transaction Processing Workshop
 
-Build a real-time transaction backend with Redis. Store data query-ready and make it AI-searchable with vector embeddings.
+Build a real-time transaction backend with Redis. Store data so it can be queiried in a single command and make it AI-searchable with vector embeddings.
 
 ## What You'll Learn
 
