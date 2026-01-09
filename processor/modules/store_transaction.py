@@ -1,5 +1,5 @@
 """
-Module 2: Store Transaction
+Module 2: Store Transaction - SOLUTION
 
 Store complete transaction as a JSON document in Redis.
 This provides the source of truth for all transaction data.
@@ -25,24 +25,16 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
         'cardLast4': tx_data.get('cardLast4'),
     }
 
-    # TODO: Replace the line below with:
-    # Add JSON to Redis
-    # Key format: f"transaction:{tx_id}"
-    # Path: "$" (root)
-    pass
+    redis_client.json().set(f"transaction:{tx_id}", "$", transaction)
 
 
 def get_transaction(redis_client, tx_id: str) -> Optional[Dict]:
     """
     Retrieve a single transaction by ID.
     """
-    # TODO: Replace the line below with:
-    # Retrieve JSON from Redis
-    # Key format: f"transaction:{tx_id}"
-    # Path: "$" (root)
-    result = None
-
+    result = redis_client.json().get(f"transaction:{tx_id}", "$")
     return result[0] if result else None
+
 
 def get_transactions_by_ids(redis_client, tx_ids: List[str]) -> List[Dict]:
     """
@@ -53,11 +45,7 @@ def get_transactions_by_ids(redis_client, tx_ids: List[str]) -> List[Dict]:
         return []
 
     keys = [f"transaction:{tx_id}" for tx_id in tx_ids]
-    
-    # TODO: Replace the line below with:
-    # Fetch JSON for the keys defined above, in one call
-    # Path: "$" (root)
-    results = []
+    results = redis_client.json().mget(keys, "$")
 
     transactions = []
     for result in results:

@@ -2,7 +2,12 @@
 
 # Redis Transaction Processing Workshop
 
-Build a real-time transaction backend with Redis. Store data so it can be queiried in a single command and make it AI-searchable with vector embeddings.
+Build a real-time transaction backend with Azure Managed Redis. Store data so it can be queried in a single command and make it AI-searchable with vector embeddings.
+
+## Prerequisites
+
+Before starting, ensure you have the required software installed:
+- **[Prerequisites Guide](docs/PREREQUISITES.md)** — All required software and installation instructions
 
 ## What You'll Learn
 
@@ -15,11 +20,66 @@ Build a real-time transaction backend with Redis. Store data so it can be queiri
 
 ## Get Started
 
-1. Spin up the workshop:
-   ```bash
-   docker compose up -d
-   ```
+### Step 1: Login to Azure
 
-2. Open the UI http://localhost:3001 and click **Redis Insight** to verify everything is running
+```bash
+azd auth login
+az login
+```
 
-3. Head to [`processor/README.md`](processor/README.md) to start completing the modules
+### Step 2: Deploy to Azure
+
+```bash
+azd up
+```
+
+You'll be prompted for:
+- **Environment name**: Your unique identifier (e.g., `john-workshop`)
+- **Azure location**: Region to deploy (e.g., `westus3`)
+- **Azure subscription**: Select your subscription
+
+First deployment takes **15-25 minutes**. Grab a coffee! ☕
+
+### Step 3: Access Your Application
+
+After deployment, you'll see URLs like:
+```
+UI URL:         https://ui.xxx.azurecontainerapps.io
+API URL:        https://api.xxx.azurecontainerapps.io
+Redis Insight:  https://redis-insight.xxx.azurecontainerapps.io
+```
+
+Open the **UI URL** to start the workshop!
+
+---
+
+## Deploy Your Code Changes
+
+After editing any module file, deploy in ~10 seconds:
+
+```bash
+./sync-and-restart.sh
+```
+
+This uploads your `processor/modules/*.py` to Azure and restarts the processor.
+
+---
+
+## Workshop Modules
+
+Head to [`processor/README.md`](processor/README.md) to start completing the modules.
+
+---
+
+## Clean Up
+
+When done, delete all Azure resources:
+
+```bash
+azd down
+```
+
+📚 **More Documentation**:
+- [Prerequisites](docs/PREREQUISITES.md) — Required software
+- [Azure Deployment](docs/AZURE_DEPLOYMENT.md) — Full deployment guide & troubleshooting
+

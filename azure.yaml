@@ -1,0 +1,116 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: transaction-processing-workshop
+metadata:
+  template: transaction-processing-workshop@0.0.1
+
+# Infrastructure configuration
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+# Services configuration
+# Docker builds are handled in postprovision hook because Dockerfiles
+# require root context (they COPY from lib/, processor/, api/ directories)
+services:
+  generator:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./generator/Dockerfile
+      context: .
+
+  processor:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./processor/Dockerfile
+      context: .
+
+  api:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./api/Dockerfile
+      context: .
+
+  ui:
+    project: .
+    language: js
+    host: containerapp
+    docker:
+      path: ./ui/Dockerfile
+      context: ./ui
+
+# Hooks for custom actions
+hooks:
+  # Build and push images after infrastructure provisioning
+  postprovision:
+    shell: sh
+    run: |
+      echo "Getting ACR credentials..."
+      ACR_NAME=$(azd env get-value ACR_NAME)
+      az acr login --name $ACR_NAME
+      
+      echo "Building and pushing images..."
+      
+      # Build and push generator
+      docker build -t $ACR_NAME.azurecr.io/generator:latest -f generator/Dockerfile .
+      docker push $ACR_NAME.azurecr.io/generator:latest
+      
+      # Build and push processor
+      docker build -t $ACR_NAME.azurecr.io/processor:latest -f processor/Dockerfile .
+      docker push $ACR_NAME.azurecr.io/processor:latest
+      
+      # Build and push API
+      docker build -t $ACR_NAME.azurecr.io/api:latest -f api/Dockerfile .
+      docker push $ACR_NAME.azurecr.io/api:latest
+      
+      # Build and push UI
+      docker build -t $ACR_NAME.azurecr.io/ui:latest -f ui/Dockerfile ./ui
+      docker push $ACR_NAME.azurecr.io/ui:latest
+      
+      echo "All images pushed successfully!"
+      
+      # Initialize Azure Files with workshop modules
+      echo ""
+      echo "Initializing workshop modules in Azure Files..."
+      chmod +x hooks/postprovision.sh
+      ./hooks/postprovision.sh || echo "Module init will complete on first sync"
+
+  # Display URLs after deployment
+  postdeploy:
+    shell: sh
+    run: |
+      echo ""
+      echo "=========================================="
+      echo "  Deployment Complete!"
+      echo "=========================================="
+      echo ""
+      echo "UI URL:           $(azd env get-value UI_URL)"
+      echo "API URL:          $(azd env get-value API_URL)"
+      echo "Redis Insight:    $(azd env get-value REDIS_INSIGHT_URL)"
+      echo ""
+      echo "Redis Host:       $(azd env get-value REDIS_HOST)"
+      echo "Redis Port:       10000 (TLS)"
+      echo ""
+      echo "=========================================="
+      echo "  Workshop Workflow"
+      echo "=========================================="
+      echo ""
+      echo "1. Edit modules in:  processor/modules/*.py"
+      echo "2. Sync and restart: ./sync-and-restart.sh"
+      echo "3. Check results in the UI"
+      echo ""
+      echo "To connect Redis Insight to your database:"
+      echo "1. Open Redis Insight URL above"
+      echo "2. Add database with:"
+      echo "   - Host: $(azd env get-value REDIS_HOST)"
+      echo "   - Port: 10000"
+      echo "   - TLS: Enabled"
+      echo "   - Password: (retrieve from Azure Portal)"
+      echo ""

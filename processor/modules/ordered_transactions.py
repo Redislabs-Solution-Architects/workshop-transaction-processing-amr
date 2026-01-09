@@ -1,5 +1,5 @@
 """
-Module 1: Ordered Transactions
+Module 1: Ordered Transactions - SOLUTION
 
 Store transactions in a Redis List, ordered from newest to oldest.
 This provides a simple timeline of all transactions.
@@ -14,10 +14,7 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
     """
     tx_id = tx_data.get('transactionId')
 
-    # TODO: Replace the line below with:
-    # Add transaction ID to the beginning of the list "transactions:ordered".
-    # This keeps newest transactions at the front (index 0).
-    pass
+    redis_client.lpush("transactions:ordered", tx_id)
 
 
 def get_recent_transactions(redis_client, limit: int = 10) -> List[str]:
@@ -26,8 +23,5 @@ def get_recent_transactions(redis_client, limit: int = 10) -> List[str]:
     Returns list of transaction IDs, newest first.
 
     """
-    # TODO: Replace the line below with:
-    # Get transaction IDs from "transactions:ordered"
-    # Get a range of items from the list.
-    # Start at 0 (newest), end at limit-1.
-    return []
+    
+    return redis_client.lrange("transactions:ordered", 0, limit - 1)

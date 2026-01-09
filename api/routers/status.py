@@ -6,8 +6,37 @@ Checks which tabs should be unlocked based on Redis data.
 
 from fastapi import APIRouter, Depends
 from api.dependencies import get_redis_client
+from processor.modules import ordered_transactions
+import inspect
 
 router = APIRouter(prefix="/api", tags=["status"])
+
+
+@router.get("/debug")
+def get_debug(redis=Depends(get_redis_client)):
+    """Debug endpoint to check module code and Redis data."""
+    list_length = redis.llen("transactions:ordered")
+    first_ids = redis.lrange("transactions:ordered", 0, 4)
+    first_ids_decoded = [id.decode() if isinstance(id, bytes) else id for id in first_ids]
+    
+    # Check if JSON docs exist for first 5 IDs
+    json_exists = {}
+    for tx_id in first_ids_decoded:
+        json_exists[tx_id] = redis.exists(f"transaction:{tx_id}")
+    
+    # Count total JSON keys
+    json_keys_count = len(redis.keys("transaction:*"))
+    
+    # Get the actual code being used
+    module_code = inspect.getsource(ordered_transactions.get_recent_transactions)
+    
+    return {
+        "redis_list_length": list_length,
+        "first_5_ids": first_ids_decoded,
+        "json_exists_for_first_5": json_exists,
+        "total_json_docs": json_keys_count,
+        "module_function_code": module_code[:500]
+    }
 
 
 @router.get("/status")

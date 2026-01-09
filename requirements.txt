@@ -8,4 +8,8 @@ orjson>=3.9.0
 
 # Vector search with RedisVL
 redisvl>=0.3.0
+
+# Use CPU-only PyTorch (much smaller, no CUDA needed on Container Apps)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 sentence-transformers>=2.2.0

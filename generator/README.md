@@ -2,10 +2,10 @@
 
 Publishes transactions to `stream:transactions`
 
-Pre-built. Runs automatically in Docker.
+Pre-built. Runs automatically when deployed to Azure.
 
-## Usage
+## View Logs
 
 ```bash
-docker compose logs -f generator
+az containerapp logs show -n generator -g $(azd env get-value AZURE_RESOURCE_GROUP) --follow
 ```

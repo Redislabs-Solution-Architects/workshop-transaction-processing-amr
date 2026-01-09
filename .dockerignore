@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+.github
+
+# Azure
+.azure
+infra
+azure.yaml
+*.bicep
+
+# Documentation
+*.md
+docs/
+
+# Docker files (not needed in image)
+docker-compose.yml
+Dockerfile*
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.venv
+venv
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# Workshop files
+workshop.env.template
+setup.sh
+redeploy.sh
+sync-and-restart.sh
+hooks/

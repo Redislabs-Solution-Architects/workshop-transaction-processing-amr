@@ -17,6 +17,7 @@ function renderStartupScreen() {
                     style="background-color: #7F3B3B;"
                     onmouseover="this.style.backgroundColor='#6B3232'"
                     onmouseout="this.style.backgroundColor='#7F3B3B'"
+                    onclick="window.open(window.REDIS_INSIGHT_URL || 'http://localhost:8001', '_blank')"
                 >
                     Redis Insight
                 </button>

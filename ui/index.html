@@ -55,7 +55,8 @@
     <!-- Container -->
     <div id="app" class="min-h-screen"></div>
 
-    <!-- Scripts - Load components first, then app -->
+    <!-- Scripts - Load config first (if exists), then components, then app -->
+    <script src="config.js" onerror="console.log('No config.js found, using defaults')"></script>
     <script src="js/startup.js"></script>
     <script src="js/banking.js"></script>
     <script src="js/transactions.js"></script>

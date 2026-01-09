@@ -3,6 +3,8 @@ Redis client wrapper for the transaction workshop.
 
 Provides a singleton Redis connection with connection pooling,
 error handling, and configuration loading from environment variables.
+
+Supports Azure Managed Redis with TLS.
 """
 
 import os
@@ -20,8 +22,9 @@ def get_redis() -> redis.Redis:
     Returns a singleton Redis client instance with connection pooling.
     Configuration is loaded from environment variables:
     - REDIS_HOST: Redis server hostname (default: localhost)
-    - REDIS_PORT: Redis server port (default: 6379)
+    - REDIS_PORT: Redis server port (default: 6379, Azure: 10000)
     - REDIS_PASSWORD: Redis password (default: None)
+    - REDIS_SSL: Enable TLS/SSL connection (default: false, Azure: true)
 
     Returns:
         redis.Redis: Connected Redis client instance
@@ -43,22 +46,24 @@ def get_redis() -> redis.Redis:
     # Get configuration from environment
     host = os.getenv("REDIS_HOST", "localhost")
     port = int(os.getenv("REDIS_PORT", "6379"))
-    password = None
+    password = os.getenv("REDIS_PASSWORD", None)
+    use_ssl = os.getenv("REDIS_SSL", "false").lower() in ("true", "1", "yes")
 
-    # Create connection pool for better performance
-    pool = redis.ConnectionPool(
-        host=host,
-        port=port,
-        password=password if password else None,
-        decode_responses=True,  # Auto-decode responses to strings
-        max_connections=10,
+    # Build Redis URL
+    scheme = "rediss" if use_ssl else "redis"
+    if password:
+        redis_url = f"{scheme}://:{password}@{host}:{port}"
+    else:
+        redis_url = f"{scheme}://{host}:{port}"
+
+    # Create Redis client using URL (handles SSL automatically)
+    _redis_client = redis.from_url(
+        redis_url,
+        decode_responses=True,
         socket_keepalive=True,
-        socket_connect_timeout=5,
+        socket_connect_timeout=10,
         retry_on_timeout=True,
     )
-
-    # Create Redis client
-    _redis_client = redis.Redis(connection_pool=pool)
 
     # Test connection
     try:

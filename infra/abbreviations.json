@@ -1,0 +1,11 @@
+{
+  "appManagedEnvironments": "cae-",
+  "cacheRedisEnterprise": "redis-",
+  "containerRegistryRegistries": "acr",
+  "managedIdentityUserAssignedIdentities": "id-",
+  "networkPrivateEndpoints": "pep-",
+  "networkVirtualNetworks": "vnet-",
+  "operationalInsightsWorkspaces": "log-",
+  "resourcesResourceGroups": "rg-",
+  "storageStorageAccounts": "st"
+}

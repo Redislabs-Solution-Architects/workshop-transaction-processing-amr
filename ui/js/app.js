@@ -3,7 +3,12 @@
  * Manages state, routing, and API polling
  */
 
-const API_BASE = 'http://localhost:8000';
+// Dynamic API base URL - auto-detected from window location for Azure deployments
+// Can be overridden by setting window.API_BASE_URL before this script loads
+const API_BASE = window.API_BASE_URL || 'http://localhost:8000';
+
+// Redis Insight URL for Azure deployments (optional)
+const REDIS_INSIGHT_URL = window.REDIS_INSIGHT_URL || null;
 
 /**
  * Show a toast notification with operation name and timing
@@ -135,7 +140,8 @@ class App {
 
         const insightBtn = document.getElementById('redis-insight-btn');
         if (insightBtn) {
-            insightBtn.onclick = () => window.open('http://localhost:8001', '_blank');
+            const insightUrl = REDIS_INSIGHT_URL || 'http://localhost:8001';
+            insightBtn.onclick = () => window.open(insightUrl, '_blank');
         }
 
         // Start polling for latest transaction
@@ -153,7 +159,8 @@ class App {
         // Redis Insight
         const insightBtn = document.getElementById('redis-insight-btn');
         if (insightBtn) {
-            insightBtn.onclick = () => window.open('http://localhost:8001', '_blank');
+            const insightUrl = REDIS_INSIGHT_URL || 'http://localhost:8001';
+            insightBtn.onclick = () => window.open(insightUrl, '_blank');
         }
 
         // Tab-specific listeners

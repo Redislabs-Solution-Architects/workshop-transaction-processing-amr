@@ -8,6 +8,16 @@ Store them using Redis data structures so each query is instant — no filtering
 
 The [`consumer.py`](consumer.py) reads from the Redis Stream and calls your modules. **You just complete the TODOs.**
 
+## Deploying Your Changes
+
+After completing any module, deploy your changes (~10 seconds):
+
+```bash
+./sync-and-restart.sh
+```
+
+This uploads your `processor/modules/*.py` to Azure Files and restarts the processor.
+
 ---
 
 ## Module 1: Ordered Transactions
@@ -20,7 +30,7 @@ The [`consumer.py`](consumer.py) reads from the Redis Stream and calls your modu
 
 **Stuck?** [`solutions/ordered_transactions.py`](solutions/ordered_transactions.py)
 
-*Complete Module 2 before restarting — the Transactions tab needs both.*
+*Complete Module 2 before deploying — the Transactions tab needs both.*
 
 ---
 
@@ -34,9 +44,11 @@ The [`consumer.py`](consumer.py) reads from the Redis Stream and calls your modu
 
 **Stuck?** [`solutions/store_transaction.py`](solutions/store_transaction.py)
 
+**Deploy & Test:**
 ```bash
-docker compose restart processor    # Unlocks: Transactions tab on UI (http://localhost:3001)
+./sync-and-restart.sh
 ```
+✅ **Unlocks:** Transactions tab on UI
 
 ---
 
@@ -50,9 +62,11 @@ docker compose restart processor    # Unlocks: Transactions tab on UI (http://lo
 
 **Stuck?** [`solutions/spending_categories.py`](solutions/spending_categories.py)
 
+**Deploy & Test:**
 ```bash
-docker compose restart processor    # Unlocks: Categories tab on UI (http://localhost:3001)
+./sync-and-restart.sh
 ```
+✅ **Unlocks:** Categories tab on UI
 
 ---
 
@@ -66,9 +80,11 @@ docker compose restart processor    # Unlocks: Categories tab on UI (http://loca
 
 **Stuck?** [`solutions/spending_over_time.py`](solutions/spending_over_time.py)
 
+**Deploy & Test:**
 ```bash
-docker compose restart processor    # Unlocks: Spending Chart on UI (http://localhost:3001)
+./sync-and-restart.sh
 ```
+✅ **Unlocks:** Spending Chart on UI
 
 ---
 
@@ -82,10 +98,11 @@ docker compose restart processor    # Unlocks: Spending Chart on UI (http://loca
 
 **Stuck?** [`solutions/vector_search.py`](solutions/vector_search.py)
 
+**Deploy & Test:**
 ```bash
-docker compose restart processor    # Unlocks: Transaction Search on UI (http://localhost:3001)
+./sync-and-restart.sh
 ```
+✅ **Unlocks:** Transaction Search on UI
 
 *Note: Embeddings only apply to new transactions after restart.*
 
----
