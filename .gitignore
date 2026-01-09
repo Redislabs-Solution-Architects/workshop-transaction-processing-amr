@@ -65,5 +65,20 @@ appendonly.aof
 # Azure Developer CLI
 .azure/
 
+# Bicep compiled outputs
+*.json.lock
+infra/*.json
+!infra/main.parameters.json
+
+# Terraform (if used)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+
+# ARM templates compiled from Bicep
+*.arm.json
+
 # Workshop configuration (contains secrets)
 workshop.env
