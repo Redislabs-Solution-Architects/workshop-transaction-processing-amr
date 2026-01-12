@@ -33,10 +33,15 @@ az login
 azd up
 ```
 
-You'll be prompted for:
-- **Environment name**: Your unique identifier (e.g., `john-workshop`)
-- **Azure location**: Region to deploy (e.g., `westus3`)
-- **Azure subscription**: Select your subscription
+You'll be prompted for three things:
+
+| Prompt | What to Enter | Example |
+|--------|--------------|--------|
+| **Environment name** | A unique name for your deployment (lowercase, no spaces). Creates resource group `rg-<name>` | `john-workshop` |
+| **Azure location** | Region where resources are created. Use `westus3` for best AMR availability | `westus3` |
+| **Azure subscription** | Select from your available subscriptions (use arrow keys) | `My Subscription` |
+
+> **Tip:** Your environment name becomes part of all resource names. Keep it short and memorable.
 
 First deployment takes **15-25 minutes**. Grab a coffee! ☕
 
@@ -67,7 +72,13 @@ This uploads your `processor/modules/*.py` to Azure and restarts the processor.
 
 ## Workshop Modules
 
-Head to [`processor/README.md`](processor/README.md) to start completing the modules.
+| Module | Topic | Type |
+|--------|-------|------|
+| **[Module 0](docs/MODULE_0_PORTAL.md)** | Explore Your Deployment | Portal Walkthrough |
+| **[Module 1-5](processor/README.md)** | Build the Transaction Processor | Hands-on Coding |
+| **[Module 6](docs/MODULE_6_OBSERVABILITY.md)** | Observability with AMR | Portal Walkthrough |
+
+Start with **Module 0** to understand what was deployed, then head to the coding modules.
 
 ---
 

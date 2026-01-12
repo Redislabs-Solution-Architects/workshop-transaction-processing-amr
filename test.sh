@@ -286,15 +286,14 @@ run_modules() {
     log_success "RUN COMPLETE"
     echo "========================================"
     echo ""
-    echo "📋 Manual verification checklist:"
-    echo "   1. Open the UI: https://ui.braveflower-2e8c0c0e.westus3.azurecontainerapps.io"
-    echo "   2. Click 'Begin Workshop' button"
-    echo "   3. Verify the implemented features work correctly"
-    echo "   4. Check Redis Insight for data: https://redis-insight.braveflower-2e8c0c0e.westus3.azurecontainerapps.io"
-    echo ""
     echo "When done verifying, run:"
     echo "   ${GREEN}./test.sh reset${NC}"
     echo ""
+    
+    # Show Redis connection details and URLs
+    if [ -f "$SCRIPT_DIR/show-redis-details.sh" ]; then
+        "$SCRIPT_DIR/show-redis-details.sh"
+    fi
 }
 
 # ============================================================================

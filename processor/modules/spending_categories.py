@@ -1,5 +1,5 @@
 """
-Module 3: Spending Categories
+Module 3: Spending Categories - SOLUTION
 
 Track spending by category using Redis Sorted Sets.
 Maintains:
@@ -18,15 +18,11 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
     merchant = tx_data.get('merchant')
     amount = float(tx_data.get('amount', 0))
 
-    # TODO: Replace the line below with:
-    # Increment category total spending. This adds to the existing score (or creates if new). Add category name with amount.
-    # Key: "spending:categories"
-    pass
+    # Increment category total spending
+    redis_client.zincrby("spending:categories", amount, category)
 
-    # TODO: Replace the line below with:
-    # Increment merchant spending within category (aggregates if merchant exists). Add merchant name with amount.
-    # Key: f"spending:category:{category}"
-    pass
+    # Increment merchant spending within category (aggregates if merchant exists)
+    redis_client.zincrby(f"spending:category:{category}", amount, merchant)
 
 
 def get_top_categories(redis_client, limit: int = 10) -> List[Tuple[str, float]]:
@@ -34,11 +30,7 @@ def get_top_categories(redis_client, limit: int = 10) -> List[Tuple[str, float]]
     Get top spending categories.
     Returns list of (category, total_amount) tuples.
     """
-
-    # TODO: Replace the line below with:
-    # Get all categories ordered by amount from "spending:categories".
-    # Include scores (amount) in the result.
-    return []
+    return redis_client.zrevrange("spending:categories", 0, limit - 1, withscores=True)
 
 
 def get_top_merchants_in_category(redis_client, category: str, limit: int = 10) -> List[Tuple[str, float]]:
@@ -46,8 +38,4 @@ def get_top_merchants_in_category(redis_client, category: str, limit: int = 10) 
     Get top merchants within a specific category.
     Returns list of (merchant, total_amount) tuples.
     """
-
-    # TODO: Replace the line below with:
-    # Get all merchants within a specific category ordered by amount from "spending:category:{category}"
-    # Include scores (amount) in the result.
-    return []
+    return redis_client.zrevrange(f"spending:category:{category}", 0, limit - 1, withscores=True)

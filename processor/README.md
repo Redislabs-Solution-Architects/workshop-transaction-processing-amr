@@ -1,6 +1,8 @@
 > **Tip:** For best viewing in your IDE, use markdown preview (VS Code: `Cmd+Shift+V` on Mac, `Ctrl+Shift+V` on Windows/Linux)
 
-# Processor Modules
+# Processor Modules (1-5)
+
+**Prerequisite:** Complete [Module 0 — Explore Your Deployment](../docs/MODULE_0_PORTAL.md) first.
 
 You're building a real-time transaction processor. Transactions stream in every few seconds.
 
@@ -106,3 +108,15 @@ This uploads your `processor/modules/*.py` to Azure Files and restarts the proce
 
 *Note: Embeddings only apply to new transactions after restart.*
 
+---
+
+## ✅ Coding Modules Complete!
+
+You've built a complete transaction processor using:
+- Lists for ordered data
+- JSON for document storage
+- Sorted Sets for rankings
+- TimeSeries for analytics
+- Vector Search for AI-powered queries
+
+**Next:** [Module 6 — Observability with AMR](../docs/MODULE_6_OBSERVABILITY.md)

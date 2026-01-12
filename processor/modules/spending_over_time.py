@@ -1,5 +1,5 @@
 """
-Module 4: Spending Over Time
+Module 4: Spending Over Time - SOLUTION
 
 Track spending over time using Redis TimeSeries.
 Enables time-range queries like "spending in last 7 days".
@@ -15,25 +15,20 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
     amount = float(tx_data.get('amount', 0))
     timestamp = int(tx_data.get('timestamp', 0))
 
-    # TODO: Replace the line below with:
-    # Add amount and timestamp timseries with key "spending:timeseries"
-    pass
+    redis_client.ts().add("spending:timeseries", timestamp, amount)
 
 
 def get_spending_in_range(redis_client, start_time: int, end_time: int) -> List[Tuple[int, float]]:
     """
     Get spending data points in time range.
+    Returns list of (timestamp, amount) tuples.
     """
-    # TODO: Replace the line below with:
-    # Query "spending:timeseries" between start_time and end_time
-    return []
+    return redis_client.ts().range("spending:timeseries", start_time, end_time)
 
 
 def get_total_spending_in_range(redis_client, start_time: int, end_time: int) -> float:
     """
     Get total spending in time range.
-
-    This uses the query function above to calculate the total.
     """
     data_points = get_spending_in_range(redis_client, start_time, end_time)
     return sum(amount for _, amount in data_points)

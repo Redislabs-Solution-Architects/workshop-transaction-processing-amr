@@ -52,6 +52,13 @@ fi
 
 echo ""
 echo "============================================"
+echo "  Resource Group"
+echo "============================================"
+echo ""
+echo "  Name:          $RG_NAME"
+echo "  Portal:        https://portal.azure.com/#@/resource/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RG_NAME"
+echo ""
+echo "============================================"
 echo "  Service URLs"
 echo "============================================"
 echo ""

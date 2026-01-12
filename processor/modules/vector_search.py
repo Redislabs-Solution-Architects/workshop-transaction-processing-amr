@@ -1,5 +1,5 @@
 """
-Module 5: Vector Search - Semantic Transaction Search
+Module 5: Vector Search - Semantic Transaction Search - SOLUTION
 
 Enable semantic search on transactions using RedisVL.
 This allows natural language queries like "coffee shop transactions" or "transactions in Dallas".
@@ -32,11 +32,10 @@ schema = {
             "name": "embedding",
             "type": "vector",
             "attrs": {
-                # TODO: Configure vector field attributes. Replace the 4 lines below:
-                # dims: 384 (must match vectorizer output)
-                # distance_metric: "cosine"
-                # algorithm: "flat"
-                # datatype: "float32"
+                "dims": 384,
+                "distance_metric": "cosine",
+                "algorithm": "flat",
+                "datatype": "float32"
             }
         }
     ]
@@ -71,10 +70,7 @@ def process_transaction(redis_client, tx_data: Dict[str, str]) -> None:
 
     embedding = vectorizer.embed(text)
 
-    # TODO: Replace the line below with:
-    # Store embedding in the JSON document at path "embedding"
-    # Key: f"transaction:{tx_id}"
-    pass
+    redis_client.json().set(f"transaction:{tx_id}", "embedding", embedding)
 
 
 def search_by_vector(redis_client, query_vector: List, limit: int = 10) -> List[Dict]:
@@ -83,12 +79,13 @@ def search_by_vector(redis_client, query_vector: List, limit: int = 10) -> List[
     if index is None:
         index = SearchIndex.from_dict(schema, redis_client=redis_client)
 
-    # TODO: Replace the line below with:
-    # Create a VectorQuery and execute it
-    # VectorQuery params: vector, vector_field_name, num_results, return_fields
-    # We want to return all fields
-    # Use results = index.query(vec_query) to execute
-    results = []
+    vec_query = VectorQuery(
+        vector=query_vector,
+        vector_field_name="embedding",
+        num_results=limit,
+        return_fields=["$.merchant", "$.category", "$.location", "$.amount", "$.timestamp", "$.transactionId"],
+    )
+    results = index.query(vec_query)
 
     # Format results
     transactions = []
