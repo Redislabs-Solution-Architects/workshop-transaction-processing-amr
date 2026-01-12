@@ -23,6 +23,8 @@ Monitor your Redis performance, track metrics, and set up alerts.
    - **Metric**: `Operations Per Second`
    - **Aggregation**: `Avg`
 
+![Operations Per Second](images/module6/metrics-ops-per-second.png)
+
 This shows how many Redis commands your application executes.
 
 ### Cache Latency
@@ -63,6 +65,8 @@ Save your metrics for quick access:
 3. Choose **"Create new"** or existing dashboard
 4. Name it: `Redis Workshop Monitoring`
 
+![Metrics Dashboard](images/module6/metrics-dashboard.png)
+
 Access anytime from **Dashboard** in the portal sidebar.
 
 ---
@@ -73,9 +77,11 @@ Redis Insight shows you which commands are slow.
 
 1. Open Redis Insight (your deployed URL)
 2. Connect to your database
-3. Go to **Profiler** tab
+3. Go to **Profiler** tab (bottom of screen)
 4. Click **"Start Profiler"**
 5. Interact with your UI — watch commands flow in real-time
+
+![Redis Insight Profiler](images/module6/redis-insight-profiler.png)
 
 Look for:
 - Commands taking > 10ms
@@ -104,18 +110,19 @@ Updated spending categories
 
 ### Query Historical Logs
 
-1. Go to **Monitoring → Logs**
+1. Go to **Log Analytics Workspace** (`log-*`) → **Logs**
 2. Run a KQL query:
 
 ```kusto
 ContainerAppConsoleLogs_CL
 | where ContainerAppName_s == "processor"
-| where Log_s contains "error" or Log_s contains "Error"
 | order by TimeGenerated desc
 | take 50
 ```
 
-This finds recent errors in your processor.
+![KQL Query Editor](images/module6/container-app-logs-kql.png)
+
+This finds recent logs from your processor.
 
 ---
 
@@ -128,13 +135,15 @@ Get notified when something's wrong.
 1. Go to **`redis-*`** → **Monitoring → Alerts**
 2. Click **"Create alert rule"**
 3. Configure:
-   - **Signal**: `Used Memory Percentage`
-   - **Operator**: `Greater than`
-   - **Threshold**: `80`
-   - **Frequency**: Every 5 minutes
+   - **Signal**: `Cache Hits` (or `Used Memory Percentage`)
+   - **Operator**: `Less than` (or `Greater than`)
+   - **Threshold**: Set based on your needs
+   - **Frequency**: Every 1-5 minutes
+
+![Create Alert Rule](images/module6/alert-rule-create.png)
 
 4. Add an **Action group** (email, SMS, webhook)
-5. Name: `Redis High Memory Alert`
+5. Name: `Redis Alert`
 6. Click **"Create"**
 
 ### High Latency Alert
@@ -148,6 +157,8 @@ Same process with:
 ## Step 7: Check Redis INFO Stats
 
 In Redis Insight, run these commands in the **CLI** tab:
+
+![Redis Insight CLI](images/module6/redis-insight-cli-info.png)
 
 ### Memory Stats
 ```redis

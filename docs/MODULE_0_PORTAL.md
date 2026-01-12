@@ -19,6 +19,8 @@ Go to [portal.azure.com](https://portal.azure.com)
 
 You'll see all deployed resources:
 
+![Resource Group Overview](images/module0/rg-overview.png)
+
 | Resource | Type | Purpose |
 |----------|------|---------|
 | `redis-*` | Azure Managed Redis | Your data store |
@@ -36,6 +38,8 @@ You'll see all deployed resources:
 1. Click on the **`redis-*`** resource
 2. Review the **Overview** blade:
 
+![AMR Overview](images/module0/amr-overview.png)
+
 | Setting | Value | Why |
 |---------|-------|-----|
 | **SKU** | Balanced B3 | Production-grade, 3GB memory |
@@ -49,20 +53,28 @@ You'll see all deployed resources:
 - View your connection credentials
 - Primary key used by applications
 
+![Access Keys](images/module0/amr-access-keys.png)
+
 **Settings → Modules**
 - See installed Redis modules
 - These enable JSON, TimeSeries, Search capabilities
 
+![Redis Modules](images/module0/amr-modules.png)
+
 **Settings → Private endpoint connections**
 - Redis is not publicly accessible
 - Only Container Apps can reach it via VNet
+
+![Private Endpoint](images/module0/amr-private-endpoint.png)
 
 ---
 
 ## Step 4: Explore Container Apps
 
 1. Go back to your Resource Group
-2. Click on any Container App (e.g., `api`)
+2. Click on the **Container Apps Environment** (`cae-*`)
+
+![Container Apps Environment](images/module0/container-app-overview.png)
 
 ### Overview Blade
 - **Application URL** — Public endpoint
@@ -82,6 +94,8 @@ You'll see all deployed resources:
 **Monitoring → Log stream**
 - Real-time logs from the container
 - Useful for debugging
+
+![Log Stream](images/module0/container-app-logstream.png)
 
 ---
 
@@ -149,6 +163,8 @@ Or on Windows:
    - **Password**: (from show-redis-details output)
    - **Use TLS**: ✅ Enabled
 
+![Redis Insight Connection](images/module0/redis-insight-add-db.png)
+
 4. Click **"Add Redis Database"**
 
 ### Explore Your Data
@@ -157,6 +173,8 @@ Once connected:
 - **Browser** — See all keys
 - **Streams** — View `transactions:stream`
 - **Search** — Run queries against your data
+
+![Redis Insight Browser](images/module0/redis-insight-browser.png)
 
 *Your Redis is empty until transactions start flowing. Run the Generator to populate data.*
 

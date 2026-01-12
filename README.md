@@ -37,11 +37,15 @@ You'll be prompted for three things:
 
 | Prompt | What to Enter | Example |
 |--------|--------------|--------|
-| **Environment name** | A unique name for your deployment (lowercase, no spaces). Creates resource group `rg-<name>` | `john-workshop` |
+| **Environment name** | A unique name for your deployment (lowercase, no spaces) | `john-workshop` |
 | **Azure location** | Region where resources are created. Use `westus3` for best AMR availability | `westus3` |
 | **Azure subscription** | Select from your available subscriptions (use arrow keys) | `My Subscription` |
 
-> **Tip:** Your environment name becomes part of all resource names. Keep it short and memorable.
+> **Tip:** The environment name is used for:
+> - Resource group: `rg-<name>` (e.g., `rg-john-workshop`)
+> - azd environment reference (for managing multiple deployments)
+> 
+> Other resources get auto-generated names with a unique hash (e.g., `redis-abc123xyz`).
 
 First deployment takes **15-25 minutes**. Grab a coffee! ☕
 
