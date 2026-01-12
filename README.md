@@ -20,14 +20,35 @@ Before starting, ensure you have the required software installed:
 
 ## Get Started
 
-### Step 1: Login to Azure
+### Option A: GitHub Codespaces (Recommended)
+
+The fastest way to start — no local installation required!
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Redislabs-Solution-Architects/workshop-transaction-processing)
+
+1. Click the button above (or go to **Code → Codespaces → Create**)
+2. Wait ~2 minutes for the container to build
+3. Login to Azure:
+   ```bash
+   azd auth login
+   az login --use-device-code
+   ```
+4. Deploy: `azd up`
+
+Everything is pre-installed: `azd`, `az`, `python`, `pwsh`.
+
+---
+
+### Option B: Local Development
+
+#### Step 1: Login to Azure
 
 ```bash
 azd auth login
 az login
 ```
 
-### Step 2: Deploy to Azure
+#### Step 2: Deploy to Azure
 
 ```bash
 azd up
