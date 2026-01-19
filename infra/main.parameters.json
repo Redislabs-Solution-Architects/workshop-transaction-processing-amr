@@ -1,20 +1,15 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "object",
-    "properties": {
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
         "location": {
-            "type": "string",
-            "description": "Azure region for all resources"
+            "value": "${AZURE_LOCATION}"
         },
         "environmentName": {
-            "type": "string",
-            "description": "Unique environment name - auto-populated from Azure Developer CLI environment"
+            "value": "${AZURE_ENV_NAME}"
         },
         "redisSku": {
-            "type": "string",
-            "description": "Redis SKU (B3 = 3GB minimum for RediSearch)",
-            "default": "Balanced_B3"
+            "value": "Balanced_B3"
         }
-    },
-    "required": ["location"]
+    }
 }
