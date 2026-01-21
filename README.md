@@ -35,8 +35,6 @@ The fastest way to start — no local installation required!
    ```
 4. Deploy:
    ```bash
-   azd init
-   azd env set AZURE_LOCATION westus3
    azd up
    ```
 
@@ -56,20 +54,18 @@ az login
 #### Step 2: Deploy to Azure
 
 ```bash
-azd init
-azd env set AZURE_LOCATION westus3
 azd up
 ```
 
 You'll be prompted for:
 
 | Prompt | What to Enter | Example |
-|--------|--------------|--------|
+|--------|--------------|---------|
 | **Environment name** | A unique name for your deployment (lowercase, no spaces) | `john-workshop` |
 | **Azure subscription** | Select from your available subscriptions (use arrow keys) | `My Subscription` |
 
-> **Note:** We set `AZURE_LOCATION` to `westus3` as it has the best Azure Managed Redis availability.
-> Other supported regions: `eastus`, `eastus2`, `westeurope`, `northeurope`
+> **Note:** Resources deploy to `westus3` by default (best Azure Managed Redis availability).
+> To use a different region: `azd env set AZURE_LOCATION eastus && azd up`
 
 > **Tip:** The environment name is used for:
 > - Resource group: `rg-<name>` (e.g., `rg-john-workshop`)

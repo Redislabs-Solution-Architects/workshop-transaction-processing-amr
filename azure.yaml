@@ -4,7 +4,6 @@ name: transaction-processing-workshop
 metadata:
   template: transaction-processing-workshop@0.0.1
 
-# Require location to be set - azd will prompt for this
 requiredVersions:
   azd: ">= 1.0.0"
 
@@ -15,8 +14,6 @@ infra:
   module: main
 
 # Services configuration
-# Docker builds are handled in postprovision hook because Dockerfiles
-# require root context (they COPY from lib/, processor/, api/ directories)
 services:
   generator:
     project: .
@@ -52,6 +49,17 @@ services:
 
 # Hooks for custom actions
 hooks:
+  # Prompt for location before provisioning (with default westus3)
+  preprovision:
+    posix:
+      shell: sh
+      run: ./hooks/preprovision.sh
+      interactive: true
+    windows:
+      shell: pwsh
+      run: ./hooks/preprovision.ps1
+      interactive: true
+
   # Build and push images after infrastructure provisioning
   postprovision:
     shell: sh

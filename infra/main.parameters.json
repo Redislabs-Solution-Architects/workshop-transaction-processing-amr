@@ -9,7 +9,7 @@
             "value": "${AZURE_ENV_NAME}"
         },
         "redisSku": {
-            "value": "Balanced_B3"
+            "value": "${REDIS_SKU=Balanced_B3}"
         }
     }
 }
