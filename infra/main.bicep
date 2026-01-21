@@ -16,6 +16,9 @@ param tags object = {}
 @description('Redis SKU (B3 = 3GB minimum for RediSearch)')
 param redisSku string = 'Balanced_B3'
 
+@description('Use placeholder images for initial deployment (set to false after images are pushed to ACR)')
+param usePlaceholderImages bool = true
+
 // ============================================================================
 // VARIABLES
 // ============================================================================
@@ -236,6 +239,7 @@ module generatorApp 'modules/container-app.bicep' = {
     imageName: '${acr.outputs.loginServer}/generator:latest'
     registryServer: acr.outputs.loginServer
     identityId: identity.outputs.id
+    usePlaceholderImage: usePlaceholderImages
     externalIngress: false
     minReplicas: 1
     maxReplicas: 1
@@ -270,6 +274,7 @@ module processorApp 'modules/container-app-with-storage.bicep' = {
     imageName: '${acr.outputs.loginServer}/processor:latest'
     registryServer: acr.outputs.loginServer
     identityId: identity.outputs.id
+    usePlaceholderImage: usePlaceholderImages
     cpu: '0.5'
     memory: '1Gi'
     storageAccountName: storage.outputs.name
@@ -305,6 +310,7 @@ module apiApp 'modules/container-app-with-storage.bicep' = {
     imageName: '${acr.outputs.loginServer}/api:latest'
     registryServer: acr.outputs.loginServer
     identityId: identity.outputs.id
+    usePlaceholderImage: usePlaceholderImages
     storageAccountName: storage.outputs.name
     storageAccountKey: storage.outputs.accessKey
     shareName: storage.outputs.shareName
@@ -359,6 +365,7 @@ module uiApp 'modules/container-app.bicep' = {
     imageName: '${acr.outputs.loginServer}/ui:latest'
     registryServer: acr.outputs.loginServer
     identityId: identity.outputs.id
+    usePlaceholderImage: usePlaceholderImages
     externalIngress: true
     targetPort: 80
     minReplicas: 1

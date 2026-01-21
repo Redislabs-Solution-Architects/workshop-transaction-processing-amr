@@ -5,18 +5,20 @@
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "1931600823565888706"
+      "templateHash": "2878420458440627588"
     }
   },
   "parameters": {
     "location": {
       "type": "string",
+      "defaultValue": "westus3",
       "metadata": {
         "description": "Azure region for all resources"
       }
     },
     "environmentName": {
       "type": "string",
+      "defaultValue": "workshop",
       "metadata": {
         "description": "Unique environment name (e.g., student name or random suffix)"
       }
@@ -33,6 +35,13 @@
       "defaultValue": "Balanced_B3",
       "metadata": {
         "description": "Redis SKU (B3 = 3GB minimum for RediSearch)"
+      }
+    },
+    "usePlaceholderImages": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Use placeholder images for initial deployment (set to false after images are pushed to ACR)"
       }
     }
   },
@@ -628,7 +637,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11579541553184914207"
+              "templateHash": "3326258044874195760"
             }
           },
           "parameters": {
@@ -658,7 +667,7 @@
             },
             "publicNetworkAccess": {
               "type": "string",
-              "defaultValue": "Disabled",
+              "defaultValue": "Enabled",
               "metadata": {
                 "description": "Whether to allow public network access"
               }
@@ -971,7 +980,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "8579320992714044207"
+              "templateHash": "11786270611983390207"
             }
           },
           "parameters": {
@@ -1055,7 +1064,7 @@
           "resources": [
             {
               "type": "Microsoft.Cache/redisEnterprise",
-              "apiVersion": "2024-02-01",
+              "apiVersion": "2024-09-01-preview",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -1068,7 +1077,7 @@
             },
             {
               "type": "Microsoft.Cache/redisEnterprise/databases",
-              "apiVersion": "2024-02-01",
+              "apiVersion": "2024-09-01-preview",
               "name": "[format('{0}/{1}', parameters('name'), 'default')]",
               "properties": {
                 "clientProtocol": "Encrypted",
@@ -1106,7 +1115,7 @@
             },
             "hostName": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Cache/redisEnterprise', parameters('name')), '2024-02-01').hostName]"
+              "value": "[reference(resourceId('Microsoft.Cache/redisEnterprise', parameters('name')), '2024-09-01-preview').hostName]"
             },
             "databaseId": {
               "type": "string",
@@ -1548,6 +1557,9 @@
           "identityId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
           },
+          "usePlaceholderImage": {
+            "value": "[parameters('usePlaceholderImages')]"
+          },
           "externalIngress": {
             "value": false
           },
@@ -1603,7 +1615,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "8607346189815984512"
+              "templateHash": "263789239699544555"
             }
           },
           "parameters": {
@@ -1642,6 +1654,13 @@
               "type": "string",
               "metadata": {
                 "description": "Container registry login server"
+              }
+            },
+            "usePlaceholderImage": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use placeholder image for initial deployment (when ACR images do not exist yet)"
               }
             },
             "identityId": {
@@ -1714,6 +1733,10 @@
               }
             }
           },
+          "variables": {
+            "placeholderImage": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+            "actualImage": "[if(parameters('usePlaceholderImage'), variables('placeholderImage'), parameters('imageName'))]"
+          },
           "resources": [
             {
               "type": "Microsoft.App/containerApps",
@@ -1744,7 +1767,7 @@
                 "template": {
                   "containers": [
                     {
-                      "image": "[parameters('imageName')]",
+                      "image": "[variables('actualImage')]",
                       "name": "[parameters('name')]",
                       "env": "[parameters('env')]",
                       "resources": {
@@ -1824,6 +1847,9 @@
           "identityId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
           },
+          "usePlaceholderImage": {
+            "value": "[parameters('usePlaceholderImages')]"
+          },
           "cpu": {
             "value": "0.5"
           },
@@ -1882,7 +1908,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "15044997148270932899"
+              "templateHash": "11664336958255357083"
             }
           },
           "parameters": {
@@ -1921,6 +1947,13 @@
               "type": "string",
               "metadata": {
                 "description": "Container registry login server"
+              }
+            },
+            "usePlaceholderImage": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use placeholder image for initial deployment (when ACR images do not exist yet)"
               }
             },
             "identityId": {
@@ -1988,9 +2021,39 @@
               "metadata": {
                 "description": "Workload profile to use"
               }
+            },
+            "externalIngress": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Whether to enable external ingress"
+              }
+            },
+            "targetPort": {
+              "type": "int",
+              "defaultValue": 8000,
+              "metadata": {
+                "description": "Target port for the container"
+              }
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 1,
+              "metadata": {
+                "description": "Minimum number of replicas"
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 1,
+              "metadata": {
+                "description": "Maximum number of replicas"
+              }
             }
           },
           "variables": {
+            "placeholderImage": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+            "actualImage": "[if(parameters('usePlaceholderImage'), variables('placeholderImage'), parameters('imageName'))]",
             "envName": "[last(split(parameters('containerAppsEnvironmentId'), '/'))]"
           },
           "resources": [
@@ -2024,6 +2087,7 @@
                 "workloadProfileName": "[parameters('workloadProfileName')]",
                 "configuration": {
                   "activeRevisionsMode": "Single",
+                  "ingress": "[if(parameters('externalIngress'), createObject('external', true(), 'targetPort', parameters('targetPort'), 'allowInsecure', false(), 'transport', 'http'), null())]",
                   "secrets": "[union(parameters('secrets'), createArray(createObject('name', 'storage-account-key', 'value', parameters('storageAccountKey'))))]",
                   "registries": [
                     {
@@ -2035,7 +2099,7 @@
                 "template": {
                   "containers": [
                     {
-                      "image": "[parameters('imageName')]",
+                      "image": "[variables('actualImage')]",
                       "name": "[parameters('name')]",
                       "env": "[parameters('env')]",
                       "resources": {
@@ -2051,8 +2115,8 @@
                     }
                   ],
                   "scale": {
-                    "minReplicas": 1,
-                    "maxReplicas": 1
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]"
                   },
                   "volumes": [
                     {
@@ -2076,6 +2140,10 @@
             "name": {
               "type": "string",
               "value": "[parameters('name')]"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[if(parameters('externalIngress'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn, '')]"
             }
           }
         }
@@ -2123,6 +2191,21 @@
           },
           "identityId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
+          },
+          "usePlaceholderImage": {
+            "value": "[parameters('usePlaceholderImages')]"
+          },
+          "storageAccountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.name.value]"
+          },
+          "storageAccountKey": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.accessKey.value]"
+          },
+          "shareName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.shareName.value]"
+          },
+          "mountPath": {
+            "value": "/app/processor/modules"
           },
           "externalIngress": {
             "value": true
@@ -2182,7 +2265,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "8607346189815984512"
+              "templateHash": "11664336958255357083"
             }
           },
           "parameters": {
@@ -2223,6 +2306,13 @@
                 "description": "Container registry login server"
               }
             },
+            "usePlaceholderImage": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use placeholder image for initial deployment (when ACR images do not exist yet)"
+              }
+            },
             "identityId": {
               "type": "string",
               "metadata": {
@@ -2243,6 +2333,59 @@
                 "description": "Container secrets (array of objects with name and value)"
               }
             },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Storage account name for file share"
+              }
+            },
+            "storageAccountKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Azure Storage account key"
+              }
+            },
+            "shareName": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure Files share name"
+              }
+            },
+            "mountPath": {
+              "type": "string",
+              "defaultValue": "/app/processor/modules",
+              "metadata": {
+                "description": "Mount path in container"
+              }
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.5",
+              "metadata": {
+                "description": "CPU allocation"
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "1Gi",
+              "metadata": {
+                "description": "Memory allocation"
+              }
+            },
+            "workloadProfileName": {
+              "type": "string",
+              "defaultValue": "Consumption",
+              "metadata": {
+                "description": "Workload profile to use"
+              }
+            },
+            "externalIngress": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Whether to enable external ingress"
+              }
+            },
             "targetPort": {
               "type": "int",
               "defaultValue": 8000,
@@ -2250,16 +2393,9 @@
                 "description": "Target port for the container"
               }
             },
-            "externalIngress": {
-              "type": "bool",
-              "defaultValue": false,
-              "metadata": {
-                "description": "Enable external ingress"
-              }
-            },
             "minReplicas": {
               "type": "int",
-              "defaultValue": 0,
+              "defaultValue": 1,
               "metadata": {
                 "description": "Minimum number of replicas"
               }
@@ -2270,30 +2406,27 @@
               "metadata": {
                 "description": "Maximum number of replicas"
               }
-            },
-            "cpu": {
-              "type": "string",
-              "defaultValue": "0.5",
-              "metadata": {
-                "description": "CPU allocation (e.g., 0.5)"
-              }
-            },
-            "memory": {
-              "type": "string",
-              "defaultValue": "1Gi",
-              "metadata": {
-                "description": "Memory allocation (e.g., 1Gi)"
-              }
-            },
-            "workloadProfileName": {
-              "type": "string",
-              "defaultValue": "Consumption",
-              "metadata": {
-                "description": "Workload profile to use"
-              }
             }
           },
+          "variables": {
+            "placeholderImage": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+            "actualImage": "[if(parameters('usePlaceholderImage'), variables('placeholderImage'), parameters('imageName'))]",
+            "envName": "[last(split(parameters('containerAppsEnvironmentId'), '/'))]"
+          },
           "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments/storages",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/{1}', variables('envName'), 'modules-storage')]",
+              "properties": {
+                "azureFile": {
+                  "accountName": "[parameters('storageAccountName')]",
+                  "accountKey": "[parameters('storageAccountKey')]",
+                  "shareName": "[parameters('shareName')]",
+                  "accessMode": "ReadWrite"
+                }
+              }
+            },
             {
               "type": "Microsoft.App/containerApps",
               "apiVersion": "2024-03-01",
@@ -2311,33 +2444,49 @@
                 "workloadProfileName": "[parameters('workloadProfileName')]",
                 "configuration": {
                   "activeRevisionsMode": "Single",
-                  "secrets": "[parameters('secrets')]",
+                  "ingress": "[if(parameters('externalIngress'), createObject('external', true(), 'targetPort', parameters('targetPort'), 'allowInsecure', false(), 'transport', 'http'), null())]",
+                  "secrets": "[union(parameters('secrets'), createArray(createObject('name', 'storage-account-key', 'value', parameters('storageAccountKey'))))]",
                   "registries": [
                     {
                       "server": "[parameters('registryServer')]",
                       "identity": "[parameters('identityId')]"
                     }
-                  ],
-                  "ingress": "[if(parameters('externalIngress'), createObject('external', true(), 'targetPort', parameters('targetPort'), 'transport', 'http', 'allowInsecure', false()), null())]"
+                  ]
                 },
                 "template": {
                   "containers": [
                     {
-                      "image": "[parameters('imageName')]",
+                      "image": "[variables('actualImage')]",
                       "name": "[parameters('name')]",
                       "env": "[parameters('env')]",
                       "resources": {
                         "cpu": "[json(parameters('cpu'))]",
                         "memory": "[parameters('memory')]"
-                      }
+                      },
+                      "volumeMounts": [
+                        {
+                          "volumeName": "modules-volume",
+                          "mountPath": "[parameters('mountPath')]"
+                        }
+                      ]
                     }
                   ],
                   "scale": {
                     "minReplicas": "[parameters('minReplicas')]",
                     "maxReplicas": "[parameters('maxReplicas')]"
-                  }
+                  },
+                  "volumes": [
+                    {
+                      "name": "modules-volume",
+                      "storageType": "AzureFile",
+                      "storageName": "modules-storage"
+                    }
+                  ]
                 }
-              }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments/storages', variables('envName'), 'modules-storage')]"
+              ]
             }
           ],
           "outputs": {
@@ -2352,10 +2501,6 @@
             "fqdn": {
               "type": "string",
               "value": "[if(parameters('externalIngress'), reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn, '')]"
-            },
-            "latestRevisionName": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').latestRevisionName]"
             }
           }
         }
@@ -2368,7 +2513,8 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-pe-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment')]"
       ]
     },
     {
@@ -2566,6 +2712,9 @@
           "identityId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
           },
+          "usePlaceholderImage": {
+            "value": "[parameters('usePlaceholderImages')]"
+          },
           "externalIngress": {
             "value": true
           },
@@ -2604,7 +2753,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "8607346189815984512"
+              "templateHash": "263789239699544555"
             }
           },
           "parameters": {
@@ -2643,6 +2792,13 @@
               "type": "string",
               "metadata": {
                 "description": "Container registry login server"
+              }
+            },
+            "usePlaceholderImage": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Use placeholder image for initial deployment (when ACR images do not exist yet)"
               }
             },
             "identityId": {
@@ -2715,6 +2871,10 @@
               }
             }
           },
+          "variables": {
+            "placeholderImage": "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest",
+            "actualImage": "[if(parameters('usePlaceholderImage'), variables('placeholderImage'), parameters('imageName'))]"
+          },
           "resources": [
             {
               "type": "Microsoft.App/containerApps",
@@ -2745,7 +2905,7 @@
                 "template": {
                   "containers": [
                     {
-                      "image": "[parameters('imageName')]",
+                      "image": "[variables('actualImage')]",
                       "name": "[parameters('name')]",
                       "env": "[parameters('env')]",
                       "resources": {
@@ -2810,6 +2970,10 @@
     "AZURE_RESOURCE_GROUP": {
       "type": "string",
       "value": "[variables('resourceGroupName')]"
+    },
+    "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
     },
     "ACR_NAME": {
       "type": "string",

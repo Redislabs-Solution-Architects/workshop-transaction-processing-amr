@@ -33,7 +33,12 @@ The fastest way to start — no local installation required!
    azd auth login
    az login --use-device-code
    ```
-4. Deploy: `azd up`
+4. Deploy:
+   ```bash
+   azd init
+   azd env set AZURE_LOCATION westus3
+   azd up
+   ```
 
 Everything is pre-installed: `azd`, `az`, `python`, `pwsh`.
 
@@ -51,16 +56,20 @@ az login
 #### Step 2: Deploy to Azure
 
 ```bash
+azd init
+azd env set AZURE_LOCATION westus3
 azd up
 ```
 
-You'll be prompted for three things:
+You'll be prompted for:
 
 | Prompt | What to Enter | Example |
 |--------|--------------|--------|
 | **Environment name** | A unique name for your deployment (lowercase, no spaces) | `john-workshop` |
-| **Azure location** | Region where resources are created. Use `westus3` for best AMR availability | `westus3` |
 | **Azure subscription** | Select from your available subscriptions (use arrow keys) | `My Subscription` |
+
+> **Note:** We set `AZURE_LOCATION` to `westus3` as it has the best Azure Managed Redis availability.
+> Other supported regions: `eastus`, `eastus2`, `westeurope`, `northeurope`
 
 > **Tip:** The environment name is used for:
 > - Resource group: `rg-<name>` (e.g., `rg-john-workshop`)

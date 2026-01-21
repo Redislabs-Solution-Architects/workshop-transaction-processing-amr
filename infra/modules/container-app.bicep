@@ -18,6 +18,13 @@ param imageName string
 @description('Container registry login server')
 param registryServer string
 
+@description('Use placeholder image for initial deployment (when ACR images do not exist yet)')
+param usePlaceholderImage bool = false
+
+// Placeholder image that always exists - used for initial deployment
+var placeholderImage = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+var actualImage = usePlaceholderImage ? placeholderImage : imageName
+
 @description('User-assigned managed identity ID for ACR pull')
 param identityId string
 
@@ -80,7 +87,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     template: {
       containers: [
         {
-          image: imageName
+          image: actualImage
           name: name
           env: env
           resources: {

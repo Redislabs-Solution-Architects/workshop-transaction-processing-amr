@@ -4,6 +4,10 @@ name: transaction-processing-workshop
 metadata:
   template: transaction-processing-workshop@0.0.1
 
+# Require location to be set - azd will prompt for this
+requiredVersions:
+  azd: ">= 1.0.0"
+
 # Infrastructure configuration
 infra:
   provider: bicep
@@ -54,27 +58,48 @@ hooks:
     run: |
       echo "Getting ACR credentials..."
       ACR_NAME=$(azd env get-value ACR_NAME)
+      RESOURCE_GROUP=$(azd env get-value AZURE_RESOURCE_GROUP)
+      
       az acr login --name $ACR_NAME
       
-      echo "Building and pushing images..."
+      echo "Building and pushing images for linux/amd64..."
       
-      # Build and push generator
-      docker build -t $ACR_NAME.azurecr.io/generator:latest -f generator/Dockerfile .
+      # Build and push generator (linux/amd64 for Azure Container Apps)
+      # --provenance=false prevents multi-arch manifest which Container Apps can't handle
+      docker build --platform linux/amd64 --provenance=false -t $ACR_NAME.azurecr.io/generator:latest -f generator/Dockerfile .
       docker push $ACR_NAME.azurecr.io/generator:latest
       
       # Build and push processor
-      docker build -t $ACR_NAME.azurecr.io/processor:latest -f processor/Dockerfile .
+      docker build --platform linux/amd64 --provenance=false -t $ACR_NAME.azurecr.io/processor:latest -f processor/Dockerfile .
       docker push $ACR_NAME.azurecr.io/processor:latest
       
       # Build and push API
-      docker build -t $ACR_NAME.azurecr.io/api:latest -f api/Dockerfile .
+      docker build --platform linux/amd64 --provenance=false -t $ACR_NAME.azurecr.io/api:latest -f api/Dockerfile .
       docker push $ACR_NAME.azurecr.io/api:latest
       
       # Build and push UI
-      docker build -t $ACR_NAME.azurecr.io/ui:latest -f ui/Dockerfile ./ui
+      docker build --platform linux/amd64 --provenance=false -t $ACR_NAME.azurecr.io/ui:latest -f ui/Dockerfile ./ui
       docker push $ACR_NAME.azurecr.io/ui:latest
       
       echo "All images pushed successfully!"
+      
+      # Update Container Apps to use the real images
+      echo ""
+      echo "Updating Container Apps with real images..."
+      
+      az containerapp update --name generator --resource-group $RESOURCE_GROUP \
+        --image $ACR_NAME.azurecr.io/generator:latest
+      
+      az containerapp update --name processor --resource-group $RESOURCE_GROUP \
+        --image $ACR_NAME.azurecr.io/processor:latest
+      
+      az containerapp update --name api --resource-group $RESOURCE_GROUP \
+        --image $ACR_NAME.azurecr.io/api:latest
+      
+      az containerapp update --name ui --resource-group $RESOURCE_GROUP \
+        --image $ACR_NAME.azurecr.io/ui:latest
+      
+      echo "Container Apps updated successfully!"
       
       # Initialize Azure Files with workshop modules
       echo ""
