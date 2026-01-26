@@ -37,6 +37,7 @@ The fastest way to start — no local installation required!
    ```bash
    azd up
    ```
+   > **Note:** If deployment fails with `ParentResourceNotFound`, run `azd provision && azd deploy` to complete. This is a known ARM race condition.
 
 Everything is pre-installed: `azd`, `az`, `python`, `pwsh`.
 
@@ -66,6 +67,16 @@ You'll be prompted for:
 
 > **Note:** Resources deploy to `westus3` by default (best Azure Managed Redis availability).
 > To use a different region: `azd env set AZURE_LOCATION eastus && azd up`
+
+> **⚠️ Known Issue: ARM Race Condition**
+> 
+> Azure Managed Redis v2 API may report `ParentResourceNotFound` during first deployment even though resources are created successfully. This is an ARM timing issue.
+> 
+> **If deployment fails:**
+> - Run `azd provision && azd deploy` to complete
+> - The resources are usually already deployed — the error is cosmetic
+>
+> **Typical deployment time:** 15-25 minutes (first run may fail and require a second `azd provision`)
 
 > **Tip:** The environment name is used for:
 > - Resource group: `rg-<name>` (e.g., `rg-john-workshop`)

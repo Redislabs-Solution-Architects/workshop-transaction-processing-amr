@@ -13,8 +13,11 @@ param environmentName string = 'workshop'
 @description('Tags to apply to all resources')
 param tags object = {}
 
-@description('Redis SKU (B3 = 3GB minimum for RediSearch)')
-param redisSku string = 'Balanced_B3'
+@description('Redis SKU - Balanced_B5 or higher recommended for RediSearch with modules')
+param redisSku string = 'Balanced_B5'
+
+@description('Enable Redis high availability')
+param redisHighAvailability bool = true
 
 @description('Use placeholder images for initial deployment (set to false after images are pushed to ACR)')
 param usePlaceholderImages bool = true
@@ -50,12 +53,27 @@ resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
 }
 
 // ============================================================================
-// NETWORKING
+// MANAGED IDENTITY (Deploy first as anchor to ensure RG is fully replicated)
+// ============================================================================
+
+module identity 'modules/managed-identity.bicep' = {
+  name: 'identity-deployment'
+  scope: rg
+  params: {
+    name: identityName
+    location: location
+    tags: tags
+  }
+}
+
+// ============================================================================
+// NETWORKING (Depends on identity to ensure RG replication)
 // ============================================================================
 
 module vnet 'modules/virtual-network.bicep' = {
   name: 'vnet-deployment'
   scope: rg
+  dependsOn: [identity] // Ensures RG is fully replicated before parallel deployments
   params: {
     name: vnetName
     location: location
@@ -80,20 +98,6 @@ module acrDnsZone 'modules/private-dns-zone.bicep' = {
   params: {
     name: acrDnsZoneName
     vnetId: vnet.outputs.vnetId
-    tags: tags
-  }
-}
-
-// ============================================================================
-// MANAGED IDENTITY
-// ============================================================================
-
-module identity 'modules/managed-identity.bicep' = {
-  name: 'identity-deployment'
-  scope: rg
-  params: {
-    name: identityName
-    location: location
     tags: tags
   }
 }
@@ -164,6 +168,7 @@ module redis 'modules/redis-enterprise.bicep' = {
     location: location
     tags: tags
     skuName: redisSku
+    highAvailability: redisHighAvailability
     clusteringPolicy: 'EnterpriseCluster' // REQUIRED for RediSearch
   }
 }

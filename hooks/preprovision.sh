@@ -1,5 +1,8 @@
 #!/bin/bash
-# Prompt for Azure location if not already set
+# Pre-provision hook: Set location and pre-create resource group
+# This ensures the RG is fully replicated before Bicep deployment starts
+
+set -e
 
 # Check if AZURE_LOCATION is already set (suppress error for missing key)
 CURRENT_LOCATION=""
@@ -37,6 +40,57 @@ if [ -z "$CURRENT_LOCATION" ]; then
     echo ""
     echo "Setting AZURE_LOCATION to: $SELECTED_LOCATION"
     azd env set AZURE_LOCATION "$SELECTED_LOCATION"
+    CURRENT_LOCATION="$SELECTED_LOCATION"
 else
     echo "Using existing AZURE_LOCATION: $CURRENT_LOCATION"
 fi
+
+# ============================================================================
+# PRE-CREATE RESOURCE GROUP
+# This ensures the RG is fully replicated across Azure before Bicep runs
+# ============================================================================
+
+# Get environment name for resource group naming
+AZURE_ENV_NAME=$(azd env get-value AZURE_ENV_NAME 2>/dev/null || echo "")
+if [ -z "$AZURE_ENV_NAME" ]; then
+    echo "ERROR: AZURE_ENV_NAME not set. Run 'azd env new <name>' first."
+    exit 1
+fi
+
+RG_NAME="rg-${AZURE_ENV_NAME}"
+
+echo ""
+echo "╔════════════════════════════════════════════════════════════════╗"
+echo "║              Pre-creating Resource Group                       ║"
+echo "╠════════════════════════════════════════════════════════════════╣"
+echo "║  This ensures Azure has time to replicate the RG globally      ║"
+echo "║  before the main deployment starts.                            ║"
+echo "╚════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Check if RG already exists
+if az group show --name "$RG_NAME" --query "name" -o tsv 2>/dev/null; then
+    echo "✓ Resource group '$RG_NAME' already exists"
+else
+    echo "Creating resource group '$RG_NAME' in '$CURRENT_LOCATION'..."
+    az group create \
+        --name "$RG_NAME" \
+        --location "$CURRENT_LOCATION" \
+        --tags "azd-env-name=$AZURE_ENV_NAME" \
+        --output none
+    
+    echo "✓ Resource group created"
+    
+    # Wait for replication (10 seconds is usually enough)
+    echo "Waiting 10 seconds for Azure global replication..."
+    sleep 10
+    
+    # Verify the RG is accessible
+    if az group show --name "$RG_NAME" --query "provisioningState" -o tsv 2>/dev/null | grep -q "Succeeded"; then
+        echo "✓ Resource group verified and ready"
+    else
+        echo "⚠ Warning: Resource group verification unclear, proceeding anyway..."
+    fi
+fi
+
+echo ""
