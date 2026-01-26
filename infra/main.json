@@ -1,11 +1,12 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "languageVersion": "2.0",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "2878420458440627588"
+      "templateHash": "4525685351931697564"
     }
   },
   "parameters": {
@@ -32,9 +33,16 @@
     },
     "redisSku": {
       "type": "string",
-      "defaultValue": "Balanced_B3",
+      "defaultValue": "Balanced_B5",
       "metadata": {
-        "description": "Redis SKU (B3 = 3GB minimum for RediSearch)"
+        "description": "Redis SKU - Balanced_B5 or higher recommended for RediSearch with modules"
+      }
+    },
+    "redisHighAvailability": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable Redis high availability"
       }
     },
     "usePlaceholderImages": {
@@ -70,15 +78,100 @@
     "redisDnsZoneName": "privatelink.redis.cache.windows.net",
     "acrDnsZoneName": "privatelink.azurecr.io"
   },
-  "resources": [
-    {
+  "resources": {
+    "rg": {
       "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2022-09-01",
       "name": "[variables('resourceGroupName')]",
       "location": "[parameters('location')]",
       "tags": "[union(parameters('tags'), createObject('azd-env-name', parameters('environmentName')))]"
     },
-    {
+    "identity": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "identity-deployment",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('identityName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "17699003050504154153"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the managed identity"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region for the resource"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').principalId]"
+            },
+            "clientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').clientId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "rg"
+      ]
+    },
+    "vnet": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "vnet-deployment",
@@ -201,10 +294,11 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "identity",
+        "rg"
       ]
     },
-    {
+    "redisDnsZone": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "redis-dns-zone-deployment",
@@ -219,7 +313,7 @@
             "value": "[variables('redisDnsZoneName')]"
           },
           "vnetId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.vnetId.value]"
+            "value": "[reference('vnet').outputs.vnetId.value]"
           },
           "tags": {
             "value": "[parameters('tags')]"
@@ -294,11 +388,11 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment')]"
+        "rg",
+        "vnet"
       ]
     },
-    {
+    "acrDnsZone": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "acr-dns-zone-deployment",
@@ -313,7 +407,7 @@
             "value": "[variables('acrDnsZoneName')]"
           },
           "vnetId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.vnetId.value]"
+            "value": "[reference('vnet').outputs.vnetId.value]"
           },
           "tags": {
             "value": "[parameters('tags')]"
@@ -388,96 +482,11 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment')]"
+        "rg",
+        "vnet"
       ]
     },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "identity-deployment",
-      "resourceGroup": "[variables('resourceGroupName')]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "name": {
-            "value": "[variables('identityName')]"
-          },
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[parameters('tags')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "17699003050504154153"
-            }
-          },
-          "parameters": {
-            "name": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the managed identity"
-              }
-            },
-            "location": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure region for the resource"
-              }
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "Tags to apply to resources"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
-              "apiVersion": "2023-01-31",
-              "name": "[parameters('name')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]"
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name'))]"
-            },
-            "name": {
-              "type": "string",
-              "value": "[parameters('name')]"
-            },
-            "principalId": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').principalId]"
-            },
-            "clientId": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('name')), '2023-01-31').clientId]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
-      ]
-    },
-    {
+    "storage": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "storage-deployment",
@@ -606,10 +615,11 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "identity",
+        "rg"
       ]
     },
-    {
+    "acr": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "acr-deployment",
@@ -714,10 +724,11 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "identity",
+        "rg"
       ]
     },
-    {
+    "acrPrivateEndpoint": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "acr-pe-deployment",
@@ -738,10 +749,10 @@
             "value": "[parameters('tags')]"
           },
           "subnetId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.privateEndpointsSubnetId.value]"
+            "value": "[reference('vnet').outputs.privateEndpointsSubnetId.value]"
           },
           "privateLinkServiceId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('acr').outputs.id.value]"
           },
           "groupIds": {
             "value": [
@@ -749,7 +760,7 @@
             ]
           },
           "privateDnsZoneId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-dns-zone-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('acrDnsZone').outputs.id.value]"
           }
         },
         "template": {
@@ -759,7 +770,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "4657683715817475016"
+              "templateHash": "6619557308383963764"
             }
           },
           "parameters": {
@@ -804,6 +815,13 @@
               "defaultValue": {},
               "metadata": {
                 "description": "Tags to apply to resources"
+              }
+            },
+            "databaseId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional: Database ID to force dependency chain (ensures parent resource is fully ready)"
               }
             }
           },
@@ -861,13 +879,13 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-dns-zone-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment')]"
+        "acr",
+        "acrDnsZone",
+        "rg",
+        "vnet"
       ]
     },
-    {
+    "acrRoleAssignment": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "acr-role-assignment",
@@ -879,10 +897,10 @@
         "mode": "Incremental",
         "parameters": {
           "principalId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.principalId.value]"
+            "value": "[reference('identity').outputs.principalId.value]"
           },
           "acrId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('acr').outputs.id.value]"
           }
         },
         "template": {
@@ -941,12 +959,12 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "acr",
+        "identity",
+        "rg"
       ]
     },
-    {
+    "redis": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "redis-deployment",
@@ -969,18 +987,22 @@
           "skuName": {
             "value": "[parameters('redisSku')]"
           },
+          "highAvailability": {
+            "value": "[parameters('redisHighAvailability')]"
+          },
           "clusteringPolicy": {
             "value": "EnterpriseCluster"
           }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
           "contentVersion": "1.0.0.0",
           "metadata": {
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11786270611983390207"
+              "templateHash": "1020135853446338008"
             }
           },
           "parameters": {
@@ -998,7 +1020,7 @@
             },
             "skuName": {
               "type": "string",
-              "defaultValue": "Balanced_B3",
+              "defaultValue": "Balanced_B5",
               "allowedValues": [
                 "Balanced_B0",
                 "Balanced_B1",
@@ -1026,20 +1048,24 @@
                 "MemoryOptimized_M1000",
                 "MemoryOptimized_M1500",
                 "MemoryOptimized_M2000",
-                "ComputeOptimized_X3",
-                "ComputeOptimized_X5",
-                "ComputeOptimized_X10",
-                "ComputeOptimized_X20",
-                "ComputeOptimized_X50",
-                "ComputeOptimized_X100",
-                "ComputeOptimized_X150",
-                "ComputeOptimized_X250",
-                "ComputeOptimized_X350",
-                "ComputeOptimized_X500",
-                "ComputeOptimized_X700"
+                "FlashOptimized_A250",
+                "FlashOptimized_A500",
+                "FlashOptimized_A700",
+                "FlashOptimized_A1000",
+                "FlashOptimized_A1500",
+                "FlashOptimized_A2000",
+                "FlashOptimized_A4500",
+                "Enterprise_E1",
+                "Enterprise_E5",
+                "Enterprise_E10",
+                "Enterprise_E20",
+                "Enterprise_E50",
+                "Enterprise_E100",
+                "Enterprise_E200",
+                "Enterprise_E400"
               ],
               "metadata": {
-                "description": "SKU name (e.g., Balanced_B3, Balanced_B6)"
+                "description": "SKU name - supports both new Balanced_B* and legacy Enterprise_E* formats"
               }
             },
             "clusteringPolicy": {
@@ -1053,6 +1079,49 @@
                 "description": "Clustering policy - MUST be EnterpriseCluster for RediSearch"
               }
             },
+            "highAvailability": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable high availability"
+              }
+            },
+            "minimumTlsVersion": {
+              "type": "string",
+              "defaultValue": "1.2",
+              "allowedValues": [
+                "1.0",
+                "1.1",
+                "1.2"
+              ],
+              "metadata": {
+                "description": "Minimum TLS version"
+              }
+            },
+            "accessKeysAuthenticationEnabled": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable access keys authentication"
+              }
+            },
+            "evictionPolicy": {
+              "type": "string",
+              "defaultValue": "NoEviction",
+              "allowedValues": [
+                "NoEviction",
+                "AllKeysLRU",
+                "AllKeysRandom",
+                "VolatileLRU",
+                "VolatileRandom",
+                "VolatileTTL",
+                "AllKeysLFU",
+                "VolatileLFU"
+              ],
+              "metadata": {
+                "description": "Eviction policy for the database"
+              }
+            },
             "tags": {
               "type": "object",
               "defaultValue": {},
@@ -1061,29 +1130,43 @@
               }
             }
           },
-          "resources": [
-            {
+          "variables": {
+            "isV2Sku": "[or(or(startsWith(parameters('skuName'), 'Balanced_'), startsWith(parameters('skuName'), 'MemoryOptimized_')), startsWith(parameters('skuName'), 'FlashOptimized_'))]"
+          },
+          "resources": {
+            "redisEnterprise": {
               "type": "Microsoft.Cache/redisEnterprise",
-              "apiVersion": "2024-09-01-preview",
+              "apiVersion": "2025-05-01-preview",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "sku": {
                 "name": "[parameters('skuName')]"
               },
+              "kind": "[if(variables('isV2Sku'), 'v2', null())]",
+              "identity": {
+                "type": "None"
+              },
               "properties": {
-                "minimumTlsVersion": "1.2"
+                "minimumTlsVersion": "[parameters('minimumTlsVersion')]",
+                "highAvailability": "[if(parameters('highAvailability'), 'Enabled', 'Disabled')]"
               }
             },
-            {
+            "database": {
               "type": "Microsoft.Cache/redisEnterprise/databases",
-              "apiVersion": "2024-09-01-preview",
+              "apiVersion": "2025-05-01-preview",
               "name": "[format('{0}/{1}', parameters('name'), 'default')]",
               "properties": {
                 "clientProtocol": "Encrypted",
                 "port": 10000,
                 "clusteringPolicy": "[parameters('clusteringPolicy')]",
-                "evictionPolicy": "NoEviction",
+                "evictionPolicy": "[parameters('evictionPolicy')]",
+                "persistence": {
+                  "aofEnabled": false,
+                  "rdbEnabled": false
+                },
+                "deferUpgrade": "NotDeferred",
+                "accessKeysAuthentication": "[if(parameters('accessKeysAuthenticationEnabled'), 'Enabled', 'Disabled')]",
                 "modules": [
                   {
                     "name": "RediSearch"
@@ -1100,10 +1183,10 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Cache/redisEnterprise', parameters('name'))]"
+                "redisEnterprise"
               ]
             }
-          ],
+          },
           "outputs": {
             "id": {
               "type": "string",
@@ -1115,20 +1198,25 @@
             },
             "hostName": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.Cache/redisEnterprise', parameters('name')), '2024-09-01-preview').hostName]"
+              "value": "[reference('redisEnterprise').hostName]"
             },
             "databaseId": {
               "type": "string",
               "value": "[resourceId('Microsoft.Cache/redisEnterprise/databases', parameters('name'), 'default')]"
+            },
+            "primaryKey": {
+              "type": "securestring",
+              "value": "[listKeys('database', '2025-05-01-preview').primaryKey]"
             }
           }
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "identity",
+        "rg"
       ]
     },
-    {
+    "redisPrivateEndpoint": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "redis-pe-deployment",
@@ -1149,10 +1237,10 @@
             "value": "[parameters('tags')]"
           },
           "subnetId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.privateEndpointsSubnetId.value]"
+            "value": "[reference('vnet').outputs.privateEndpointsSubnetId.value]"
           },
           "privateLinkServiceId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('redis').outputs.id.value]"
           },
           "groupIds": {
             "value": [
@@ -1160,7 +1248,10 @@
             ]
           },
           "privateDnsZoneId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-dns-zone-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('redisDnsZone').outputs.id.value]"
+          },
+          "databaseId": {
+            "value": "[reference('redis').outputs.databaseId.value]"
           }
         },
         "template": {
@@ -1170,7 +1261,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "4657683715817475016"
+              "templateHash": "6619557308383963764"
             }
           },
           "parameters": {
@@ -1215,6 +1306,13 @@
               "defaultValue": {},
               "metadata": {
                 "description": "Tags to apply to resources"
+              }
+            },
+            "databaseId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional: Database ID to force dependency chain (ensures parent resource is fully ready)"
               }
             }
           },
@@ -1272,13 +1370,13 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-dns-zone-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment')]"
+        "redis",
+        "redisDnsZone",
+        "rg",
+        "vnet"
       ]
     },
-    {
+    "logAnalytics": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "log-analytics-deployment",
@@ -1378,10 +1476,11 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "identity",
+        "rg"
       ]
     },
-    {
+    "containerAppsEnv": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "cae-deployment",
@@ -1402,13 +1501,13 @@
             "value": "[parameters('tags')]"
           },
           "infrastructureSubnetId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment'), '2025-04-01').outputs.containerAppsSubnetId.value]"
+            "value": "[reference('vnet').outputs.containerAppsSubnetId.value]"
           },
           "logAnalyticsCustomerId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics-deployment'), '2025-04-01').outputs.customerId.value]"
+            "value": "[reference('logAnalytics').outputs.customerId.value]"
           },
           "logAnalyticsSharedKey": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics-deployment'), '2025-04-01').outputs.primarySharedKey.value]"
+            "value": "[reference('logAnalytics').outputs.primarySharedKey.value]"
           },
           "internal": {
             "value": false
@@ -1520,12 +1619,12 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'log-analytics-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'vnet-deployment')]"
+        "logAnalytics",
+        "rg",
+        "vnet"
       ]
     },
-    {
+    "generatorApp": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "generator-app-deployment",
@@ -1546,16 +1645,16 @@
             "value": "[union(parameters('tags'), createObject('azd-service-name', 'generator'))]"
           },
           "containerAppsEnvironmentId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('containerAppsEnv').outputs.id.value]"
           },
           "imageName": {
-            "value": "[format('{0}/generator:latest', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value)]"
+            "value": "[format('{0}/generator:latest', reference('acr').outputs.loginServer.value)]"
           },
           "registryServer": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+            "value": "[reference('acr').outputs.loginServer.value]"
           },
           "identityId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('identity').outputs.id.value]"
           },
           "usePlaceholderImage": {
             "value": "[parameters('usePlaceholderImages')]"
@@ -1579,7 +1678,7 @@
             "value": [
               {
                 "name": "redis-password",
-                "value": "[listKeys(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Cache/redisEnterprise/databases', variables('redisName'), 'default'), '2024-02-01').primaryKey]"
+                "value": "[listOutputsWithSecureValues('redis', '2025-04-01').primaryKey]"
               }
             ]
           },
@@ -1587,7 +1686,7 @@
             "value": [
               {
                 "name": "REDIS_HOST",
-                "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment'), '2025-04-01').outputs.hostName.value]"
+                "value": "[reference('redis').outputs.hostName.value]"
               },
               {
                 "name": "REDIS_PORT",
@@ -1805,17 +1904,94 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-pe-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-role-assignment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-pe-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "acr",
+        "acrPrivateEndpoint",
+        "acrRoleAssignment",
+        "containerAppsEnv",
+        "identity",
+        "redis",
+        "redisPrivateEndpoint",
+        "rg"
       ]
     },
-    {
+    "caeStorage": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "cae-storage-deployment",
+      "resourceGroup": "[variables('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "envName": {
+            "value": "[reference('containerAppsEnv').outputs.name.value]"
+          },
+          "storageAccountName": {
+            "value": "[reference('storage').outputs.name.value]"
+          },
+          "storageAccountKey": {
+            "value": "[reference('storage').outputs.accessKey.value]"
+          },
+          "shareName": {
+            "value": "[reference('storage').outputs.shareName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "8911250599979935333"
+            }
+          },
+          "parameters": {
+            "envName": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "storageAccountKey": {
+              "type": "securestring"
+            },
+            "shareName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments/storages",
+              "apiVersion": "2024-03-01",
+              "name": "[format('{0}/{1}', parameters('envName'), 'modules-storage')]",
+              "properties": {
+                "azureFile": {
+                  "accountName": "[parameters('storageAccountName')]",
+                  "accountKey": "[parameters('storageAccountKey')]",
+                  "shareName": "[parameters('shareName')]",
+                  "accessMode": "ReadWrite"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "storageName": {
+              "type": "string",
+              "value": "modules-storage"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "containerAppsEnv",
+        "rg",
+        "storage"
+      ]
+    },
+    "processorApp": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "processor-app-deployment",
@@ -1836,16 +2012,16 @@
             "value": "[union(parameters('tags'), createObject('azd-service-name', 'processor'))]"
           },
           "containerAppsEnvironmentId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('containerAppsEnv').outputs.id.value]"
           },
           "imageName": {
-            "value": "[format('{0}/processor:latest', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value)]"
+            "value": "[format('{0}/processor:latest', reference('acr').outputs.loginServer.value)]"
           },
           "registryServer": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+            "value": "[reference('acr').outputs.loginServer.value]"
           },
           "identityId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('identity').outputs.id.value]"
           },
           "usePlaceholderImage": {
             "value": "[parameters('usePlaceholderImages')]"
@@ -1857,13 +2033,13 @@
             "value": "1Gi"
           },
           "storageAccountName": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.name.value]"
+            "value": "[reference('storage').outputs.name.value]"
           },
           "storageAccountKey": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.accessKey.value]"
+            "value": "[reference('storage').outputs.accessKey.value]"
           },
           "shareName": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.shareName.value]"
+            "value": "[reference('storage').outputs.shareName.value]"
           },
           "mountPath": {
             "value": "/app/processor/modules"
@@ -1872,7 +2048,7 @@
             "value": [
               {
                 "name": "redis-password",
-                "value": "[listKeys(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Cache/redisEnterprise/databases', variables('redisName'), 'default'), '2024-02-01').primaryKey]"
+                "value": "[listOutputsWithSecureValues('redis', '2025-04-01').primaryKey]"
               }
             ]
           },
@@ -1880,7 +2056,7 @@
             "value": [
               {
                 "name": "REDIS_HOST",
-                "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment'), '2025-04-01').outputs.hostName.value]"
+                "value": "[reference('redis').outputs.hostName.value]"
               },
               {
                 "name": "REDIS_PORT",
@@ -1908,7 +2084,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11664336958255357083"
+              "templateHash": "9955143557524710964"
             }
           },
           "parameters": {
@@ -2058,19 +2234,6 @@
           },
           "resources": [
             {
-              "type": "Microsoft.App/managedEnvironments/storages",
-              "apiVersion": "2024-03-01",
-              "name": "[format('{0}/{1}', variables('envName'), 'modules-storage')]",
-              "properties": {
-                "azureFile": {
-                  "accountName": "[parameters('storageAccountName')]",
-                  "accountKey": "[parameters('storageAccountKey')]",
-                  "shareName": "[parameters('shareName')]",
-                  "accessMode": "ReadWrite"
-                }
-              }
-            },
-            {
               "type": "Microsoft.App/containerApps",
               "apiVersion": "2024-03-01",
               "name": "[parameters('name')]",
@@ -2126,10 +2289,7 @@
                     }
                   ]
                 }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments/storages', variables('envName'), 'modules-storage')]"
-              ]
+              }
             }
           ],
           "outputs": {
@@ -2149,18 +2309,19 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-pe-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-role-assignment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-pe-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment')]"
+        "acr",
+        "acrPrivateEndpoint",
+        "acrRoleAssignment",
+        "caeStorage",
+        "containerAppsEnv",
+        "identity",
+        "redis",
+        "redisPrivateEndpoint",
+        "rg",
+        "storage"
       ]
     },
-    {
+    "apiApp": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "api-app-deployment",
@@ -2181,28 +2342,28 @@
             "value": "[union(parameters('tags'), createObject('azd-service-name', 'api'))]"
           },
           "containerAppsEnvironmentId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('containerAppsEnv').outputs.id.value]"
           },
           "imageName": {
-            "value": "[format('{0}/api:latest', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value)]"
+            "value": "[format('{0}/api:latest', reference('acr').outputs.loginServer.value)]"
           },
           "registryServer": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+            "value": "[reference('acr').outputs.loginServer.value]"
           },
           "identityId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('identity').outputs.id.value]"
           },
           "usePlaceholderImage": {
             "value": "[parameters('usePlaceholderImages')]"
           },
           "storageAccountName": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.name.value]"
+            "value": "[reference('storage').outputs.name.value]"
           },
           "storageAccountKey": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.accessKey.value]"
+            "value": "[reference('storage').outputs.accessKey.value]"
           },
           "shareName": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.shareName.value]"
+            "value": "[reference('storage').outputs.shareName.value]"
           },
           "mountPath": {
             "value": "/app/processor/modules"
@@ -2229,7 +2390,7 @@
             "value": [
               {
                 "name": "redis-password",
-                "value": "[listKeys(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Cache/redisEnterprise/databases', variables('redisName'), 'default'), '2024-02-01').primaryKey]"
+                "value": "[listOutputsWithSecureValues('redis', '2025-04-01').primaryKey]"
               }
             ]
           },
@@ -2237,7 +2398,7 @@
             "value": [
               {
                 "name": "REDIS_HOST",
-                "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment'), '2025-04-01').outputs.hostName.value]"
+                "value": "[reference('redis').outputs.hostName.value]"
               },
               {
                 "name": "REDIS_PORT",
@@ -2265,7 +2426,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11664336958255357083"
+              "templateHash": "9955143557524710964"
             }
           },
           "parameters": {
@@ -2415,19 +2576,6 @@
           },
           "resources": [
             {
-              "type": "Microsoft.App/managedEnvironments/storages",
-              "apiVersion": "2024-03-01",
-              "name": "[format('{0}/{1}', variables('envName'), 'modules-storage')]",
-              "properties": {
-                "azureFile": {
-                  "accountName": "[parameters('storageAccountName')]",
-                  "accountKey": "[parameters('storageAccountKey')]",
-                  "shareName": "[parameters('shareName')]",
-                  "accessMode": "ReadWrite"
-                }
-              }
-            },
-            {
               "type": "Microsoft.App/containerApps",
               "apiVersion": "2024-03-01",
               "name": "[parameters('name')]",
@@ -2483,10 +2631,7 @@
                     }
                   ]
                 }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments/storages', variables('envName'), 'modules-storage')]"
-              ]
+              }
             }
           ],
           "outputs": {
@@ -2506,18 +2651,19 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-pe-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-role-assignment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-pe-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment')]"
+        "acr",
+        "acrPrivateEndpoint",
+        "acrRoleAssignment",
+        "caeStorage",
+        "containerAppsEnv",
+        "identity",
+        "redis",
+        "redisPrivateEndpoint",
+        "rg",
+        "storage"
       ]
     },
-    {
+    "redisInsightApp": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "redis-insight-app-deployment",
@@ -2538,7 +2684,7 @@
             "value": "[union(parameters('tags'), createObject('azd-service-name', 'redis-insight'))]"
           },
           "containerAppsEnvironmentId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('containerAppsEnv').outputs.id.value]"
           },
           "targetPort": {
             "value": 5540
@@ -2676,11 +2822,11 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "containerAppsEnv",
+        "rg"
       ]
     },
-    {
+    "uiApp": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "ui-app-deployment",
@@ -2701,16 +2847,16 @@
             "value": "[union(parameters('tags'), createObject('azd-service-name', 'ui'))]"
           },
           "containerAppsEnvironmentId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('containerAppsEnv').outputs.id.value]"
           },
           "imageName": {
-            "value": "[format('{0}/ui:latest', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value)]"
+            "value": "[format('{0}/ui:latest', reference('acr').outputs.loginServer.value)]"
           },
           "registryServer": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+            "value": "[reference('acr').outputs.loginServer.value]"
           },
           "identityId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment'), '2025-04-01').outputs.id.value]"
+            "value": "[reference('identity').outputs.id.value]"
           },
           "usePlaceholderImage": {
             "value": "[parameters('usePlaceholderImages')]"
@@ -2737,11 +2883,11 @@
             "value": [
               {
                 "name": "API_BASE_URL",
-                "value": "[format('https://{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-app-deployment'), '2025-04-01').outputs.fqdn.value)]"
+                "value": "[format('https://{0}', reference('apiApp').outputs.fqdn.value)]"
               },
               {
                 "name": "REDIS_INSIGHT_URL",
-                "value": "[format('https://{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-insight-app-deployment'), '2025-04-01').outputs.fqdn.value)]"
+                "value": "[format('https://{0}', reference('redisInsightApp').outputs.fqdn.value)]"
               }
             ]
           }
@@ -2943,17 +3089,17 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-pe-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-role-assignment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-app-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'cae-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'identity-deployment')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-insight-app-deployment')]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('resourceGroupName'))]"
+        "acr",
+        "acrPrivateEndpoint",
+        "acrRoleAssignment",
+        "apiApp",
+        "containerAppsEnv",
+        "identity",
+        "redisInsightApp",
+        "rg"
       ]
     }
-  ],
+  },
   "outputs": {
     "AZURE_LOCATION": {
       "type": "string",
@@ -2973,19 +3119,19 @@
     },
     "AZURE_CONTAINER_REGISTRY_ENDPOINT": {
       "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+      "value": "[reference('acr').outputs.loginServer.value]"
     },
     "ACR_NAME": {
       "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.name.value]"
+      "value": "[reference('acr').outputs.name.value]"
     },
     "ACR_LOGIN_SERVER": {
       "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+      "value": "[reference('acr').outputs.loginServer.value]"
     },
     "REDIS_HOST": {
       "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-deployment'), '2025-04-01').outputs.hostName.value]"
+      "value": "[reference('redis').outputs.hostName.value]"
     },
     "REDIS_PORT": {
       "type": "string",
@@ -2993,23 +3139,23 @@
     },
     "API_URL": {
       "type": "string",
-      "value": "[format('https://{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'api-app-deployment'), '2025-04-01').outputs.fqdn.value)]"
+      "value": "[format('https://{0}', reference('apiApp').outputs.fqdn.value)]"
     },
     "UI_URL": {
       "type": "string",
-      "value": "[format('https://{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'ui-app-deployment'), '2025-04-01').outputs.fqdn.value)]"
+      "value": "[format('https://{0}', reference('uiApp').outputs.fqdn.value)]"
     },
     "REDIS_INSIGHT_URL": {
       "type": "string",
-      "value": "[format('https://{0}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'redis-insight-app-deployment'), '2025-04-01').outputs.fqdn.value)]"
+      "value": "[format('https://{0}', reference('redisInsightApp').outputs.fqdn.value)]"
     },
     "STORAGE_ACCOUNT_NAME": {
       "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.name.value]"
+      "value": "[reference('storage').outputs.name.value]"
     },
     "STORAGE_SHARE_NAME": {
       "type": "string",
-      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resourceGroupName')), 'Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.shareName.value]"
+      "value": "[reference('storage').outputs.shareName.value]"
     }
   }
 }

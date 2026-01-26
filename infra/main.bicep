@@ -85,6 +85,7 @@ module vnet 'modules/virtual-network.bicep' = {
 module redisDnsZone 'modules/private-dns-zone.bicep' = {
   name: 'redis-dns-zone-deployment'
   scope: rg
+  dependsOn: [vnet] // Explicit dependency to ensure VNet is fully provisioned
   params: {
     name: redisDnsZoneName
     vnetId: vnet.outputs.vnetId
@@ -95,6 +96,7 @@ module redisDnsZone 'modules/private-dns-zone.bicep' = {
 module acrDnsZone 'modules/private-dns-zone.bicep' = {
   name: 'acr-dns-zone-deployment'
   scope: rg
+  dependsOn: [vnet] // Explicit dependency to ensure VNet is fully provisioned
   params: {
     name: acrDnsZoneName
     vnetId: vnet.outputs.vnetId
@@ -109,6 +111,7 @@ module acrDnsZone 'modules/private-dns-zone.bicep' = {
 module storage 'modules/storage-account.bicep' = {
   name: 'storage-deployment'
   scope: rg
+  dependsOn: [identity] // Ensure RG is fully replicated
   params: {
     name: storageName
     location: location
@@ -124,6 +127,7 @@ module storage 'modules/storage-account.bicep' = {
 module acr 'modules/container-registry.bicep' = {
   name: 'acr-deployment'
   scope: rg
+  dependsOn: [identity] // Ensure RG is fully replicated
   params: {
     name: acrName
     location: location
@@ -135,6 +139,7 @@ module acr 'modules/container-registry.bicep' = {
 module acrPrivateEndpoint 'modules/private-endpoint.bicep' = {
   name: 'acr-pe-deployment'
   scope: rg
+  dependsOn: [acr, acrDnsZone] // Explicit dependencies to avoid race conditions
   params: {
     name: '${abbrs.networkPrivateEndpoints}acr-${resourceToken}'
     location: location
@@ -150,6 +155,7 @@ module acrPrivateEndpoint 'modules/private-endpoint.bicep' = {
 module acrRoleAssignment 'modules/role-assignment.bicep' = {
   name: 'acr-role-assignment'
   scope: rg
+  dependsOn: [acr] // Explicit dependency to ensure ACR is fully provisioned
   params: {
     principalId: identity.outputs.principalId
     acrId: acr.outputs.id
@@ -163,6 +169,7 @@ module acrRoleAssignment 'modules/role-assignment.bicep' = {
 module redis 'modules/redis-enterprise.bicep' = {
   name: 'redis-deployment'
   scope: rg
+  dependsOn: [identity] // Ensure RG is fully replicated
   params: {
     name: redisName
     location: location
@@ -174,9 +181,12 @@ module redis 'modules/redis-enterprise.bicep' = {
 }
 
 // Redis Private Endpoint
+// Note: We use dependsOn to ensure the database is fully provisioned before creating the private endpoint.
+// The database takes additional time after the cluster is ready, which can cause ParentResourceNotFound errors.
 module redisPrivateEndpoint 'modules/private-endpoint.bicep' = {
   name: 'redis-pe-deployment'
   scope: rg
+  dependsOn: [redis, redisDnsZone] // Explicit dependencies to avoid race conditions
   params: {
     name: '${abbrs.networkPrivateEndpoints}redis-${resourceToken}'
     location: location
@@ -185,6 +195,8 @@ module redisPrivateEndpoint 'modules/private-endpoint.bicep' = {
     privateLinkServiceId: redis.outputs.id
     groupIds: ['redisEnterprise']
     privateDnsZoneId: redisDnsZone.outputs.id
+    // Force dependency on database being fully ready
+    databaseId: redis.outputs.databaseId
   }
 }
 
@@ -195,6 +207,7 @@ module redisPrivateEndpoint 'modules/private-endpoint.bicep' = {
 module logAnalytics 'modules/log-analytics.bicep' = {
   name: 'log-analytics-deployment'
   scope: rg
+  dependsOn: [identity] // Ensure RG is fully replicated
   params: {
     name: logAnalyticsName
     location: location
@@ -205,6 +218,7 @@ module logAnalytics 'modules/log-analytics.bicep' = {
 module containerAppsEnv 'modules/container-apps-environment.bicep' = {
   name: 'cae-deployment'
   scope: rg
+  dependsOn: [vnet, logAnalytics] // Explicit dependencies to ensure VNet subnets and Log Analytics are fully provisioned
   params: {
     name: containerAppsEnvName
     location: location
@@ -220,22 +234,16 @@ module containerAppsEnv 'modules/container-apps-environment.bicep' = {
 // CONTAINER APPS
 // ============================================================================
 
-// Get Redis access key for secrets
-resource redisResource 'Microsoft.Cache/redisEnterprise@2024-02-01' existing = {
-  name: redisName
-  scope: rg
-}
-
-resource redisDatabase 'Microsoft.Cache/redisEnterprise/databases@2024-02-01' existing = {
-  name: 'default'
-  parent: redisResource
-}
+// NOTE: Redis access key is now obtained from redis.outputs.primaryKey
+// This ensures the key is only retrieved AFTER the database is fully provisioned
+// The previous approach using 'existing' resource references caused race conditions
+// because ARM would try to call listKeys() before the database was ready
 
 // Generator App
 module generatorApp 'modules/container-app.bicep' = {
   name: 'generator-app-deployment'
   scope: rg
-  dependsOn: [acrRoleAssignment, redisPrivateEndpoint, acrPrivateEndpoint]
+  dependsOn: [acrRoleAssignment, redis, redisPrivateEndpoint, acrPrivateEndpoint, containerAppsEnv]
   params: {
     name: 'generator'
     location: location
@@ -253,7 +261,7 @@ module generatorApp 'modules/container-app.bicep' = {
     secrets: [
       {
         name: 'redis-password'
-        value: redisDatabase.listKeys().primaryKey
+        value: redis.outputs.primaryKey
       }
     ]
     env: [
@@ -266,11 +274,25 @@ module generatorApp 'modules/container-app.bicep' = {
   }
 }
 
+// Create CAE storage link ONCE before any apps try to use it
+// This prevents ManagedEnvironmentStorageLockConflict race condition
+module caeStorage 'modules/cae-storage.bicep' = {
+  name: 'cae-storage-deployment'
+  scope: rg
+  dependsOn: [containerAppsEnv, storage]
+  params: {
+    envName: containerAppsEnv.outputs.name
+    storageAccountName: storage.outputs.name
+    storageAccountKey: storage.outputs.accessKey
+    shareName: storage.outputs.shareName
+  }
+}
+
 // Processor App (with Azure Files mount for live code editing)
 module processorApp 'modules/container-app-with-storage.bicep' = {
   name: 'processor-app-deployment'
   scope: rg
-  dependsOn: [acrRoleAssignment, redisPrivateEndpoint, acrPrivateEndpoint]
+  dependsOn: [acrRoleAssignment, redis, redisPrivateEndpoint, acrPrivateEndpoint, containerAppsEnv, storage, caeStorage]
   params: {
     name: 'processor'
     location: location
@@ -289,7 +311,7 @@ module processorApp 'modules/container-app-with-storage.bicep' = {
     secrets: [
       {
         name: 'redis-password'
-        value: redisDatabase.listKeys().primaryKey
+        value: redis.outputs.primaryKey
       }
     ]
     env: [
@@ -306,7 +328,7 @@ module processorApp 'modules/container-app-with-storage.bicep' = {
 module apiApp 'modules/container-app-with-storage.bicep' = {
   name: 'api-app-deployment'
   scope: rg
-  dependsOn: [acrRoleAssignment, redisPrivateEndpoint, acrPrivateEndpoint]
+  dependsOn: [acrRoleAssignment, redis, redisPrivateEndpoint, acrPrivateEndpoint, containerAppsEnv, storage, caeStorage]
   params: {
     name: 'api'
     location: location
@@ -329,7 +351,7 @@ module apiApp 'modules/container-app-with-storage.bicep' = {
     secrets: [
       {
         name: 'redis-password'
-        value: redisDatabase.listKeys().primaryKey
+        value: redis.outputs.primaryKey
       }
     ]
     env: [
@@ -346,6 +368,7 @@ module apiApp 'modules/container-app-with-storage.bicep' = {
 module redisInsightApp 'modules/redis-insight.bicep' = {
   name: 'redis-insight-app-deployment'
   scope: rg
+  dependsOn: [containerAppsEnv] // Explicit dependency on Container Apps Environment
   params: {
     name: 'redis-insight'
     location: location
@@ -361,7 +384,7 @@ module redisInsightApp 'modules/redis-insight.bicep' = {
 module uiApp 'modules/container-app.bicep' = {
   name: 'ui-app-deployment'
   scope: rg
-  dependsOn: [acrRoleAssignment, acrPrivateEndpoint]
+  dependsOn: [acrRoleAssignment, acrPrivateEndpoint, containerAppsEnv, apiApp, redisInsightApp]
   params: {
     name: 'ui'
     location: location

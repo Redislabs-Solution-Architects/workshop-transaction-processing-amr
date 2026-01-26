@@ -129,5 +129,8 @@ output name string = redisEnterprise.name
 output hostName string = redisEnterprise.properties.hostName
 output databaseId string = database.id
 
-// Note: Access keys must be retrieved separately using listKeys()
-// This is done in main.bicep to pass to Container Apps as secrets
+// Output the primary key directly from the database resource
+// This ensures the key is only retrieved AFTER the database is fully provisioned
+// Critical: This avoids race conditions when using existing resource references in main.bicep
+@secure()
+output primaryKey string = database.listKeys().primaryKey

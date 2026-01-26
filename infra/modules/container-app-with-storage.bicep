@@ -71,22 +71,14 @@ param maxReplicas int = 1
 // Extract the environment name from the ID
 var envName = last(split(containerAppsEnvironmentId, '/'))
 
-// Link storage to Container Apps Environment first
+// Reference existing storage link (created by cae-storage module to avoid race conditions)
 resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: envName
 }
 
-resource storageLink 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+resource storageLink 'Microsoft.App/managedEnvironments/storages@2024-03-01' existing = {
   parent: containerAppsEnv
   name: 'modules-storage'
-  properties: {
-    azureFile: {
-      accountName: storageAccountName
-      accountKey: storageAccountKey
-      shareName: shareName
-      accessMode: 'ReadWrite'
-    }
-  }
 }
 
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {

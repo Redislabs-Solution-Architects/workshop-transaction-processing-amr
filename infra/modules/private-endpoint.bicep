@@ -22,6 +22,9 @@ param privateDnsZoneId string
 @description('Tags to apply to resources')
 param tags object = {}
 
+@description('Optional: Database ID to force dependency chain (ensures parent resource is fully ready)')
+param databaseId string = ''
+
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = {
   name: name
   location: location
